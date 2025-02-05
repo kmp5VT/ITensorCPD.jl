@@ -6,7 +6,6 @@ using ITensorCPD:
     als_optimize,
     direct,
     random_CPD,
-    random_CPD_square_network,
     row_norm,
     reconstruct,
     had_contract
