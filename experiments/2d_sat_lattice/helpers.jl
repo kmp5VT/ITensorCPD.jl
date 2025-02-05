@@ -3,7 +3,7 @@
 # )
 #   s = insert_linkinds(s; link_space)
 #   tn = delta_network(eltype, s)
-  
+
 #   for edge in edges(tn)
 #     i = inds(tn[edge])
 #     deg_v1 = degree(tn, edge)
@@ -26,52 +26,52 @@
 # end
 
 function replace_inner_w_prime_loop(tn)
-  ntn = deepcopy(tn)
-  for i in 1:(length(tn) - 1)
+    ntn = deepcopy(tn)
+    for i = 1:(length(tn)-1)
+        cis = inds(tn[i])
+        is = commoninds(tn[i], tn[i+1])
+        nis = [i ∈ is ? i' : i for i in cis]
+        replaceinds!(ntn[i], cis, nis)
+        cis = inds(tn[i+1])
+        nis = [i ∈ is ? i' : i for i in cis]
+        replaceinds!(ntn[i+1], cis, nis)
+    end
+
+    i = length(tn)
     cis = inds(tn[i])
-    is = commoninds(tn[i], tn[i + 1])
+    is = commoninds(tn[i], tn[1])
     nis = [i ∈ is ? i' : i for i in cis]
     replaceinds!(ntn[i], cis, nis)
-    cis = inds(tn[i + 1])
+    cis = inds(tn[1])
     nis = [i ∈ is ? i' : i for i in cis]
-    replaceinds!(ntn[i + 1], cis, nis)
-  end
-
-  i = length(tn)
-  cis = inds(tn[i])
-  is = commoninds(tn[i], tn[1])
-  nis = [i ∈ is ? i' : i for i in cis]
-  replaceinds!(ntn[i], cis, nis)
-  cis = inds(tn[1])
-  nis = [i ∈ is ? i' : i for i in cis]
-  replaceinds!(ntn[1], cis, nis)
-  return ntn
+    replaceinds!(ntn[1], cis, nis)
+    return ntn
 end
 
 function norm_of_loop(s1::ITensorNetwork)
-  sising = s1.data_graph.vertex_data.values
-  sisingp = replace_inner_w_prime_loop(sising)
+    sising = s1.data_graph.vertex_data.values
+    sisingp = replace_inner_w_prime_loop(sising)
 
-  sqrs = sising[1] * sisingp[1]
-  for i in 2:length(sising)
-    sqrs = sqrs * sising[i] * sisingp[i]
-  end
-  return sqrt(sqrs[])
+    sqrs = sising[1] * sisingp[1]
+    for i = 2:length(sising)
+        sqrs = sqrs * sising[i] * sisingp[i]
+    end
+    return sqrt(sqrs[])
 end
 
 function ring_inds(start::Int, nx::Int, ny::Int)
-  inds = Vector{Tuple{Int,Int}}()
-  for y in start:(ny-start+1)
-      push!(inds, (start,y))
-  end
-  for x in start+1:(nx-start+1)
-      push!(inds, (x, ny-start+1))
-  end
-  for y in (ny-start +1):-1:start
-      push!(inds, (nx-start+1, y))
-  end
-  for x in (nx-start+1):-1:start+1
-  push!(inds, (x, start))
-  end
-  return Tuple(unique!(inds))
+    inds = Vector{Tuple{Int,Int}}()
+    for y = start:(ny-start+1)
+        push!(inds, (start, y))
+    end
+    for x = start+1:(nx-start+1)
+        push!(inds, (x, ny - start + 1))
+    end
+    for y = (ny-start+1):-1:start
+        push!(inds, (nx - start + 1, y))
+    end
+    for x = (nx-start+1):-1:start+1
+        push!(inds, (x, start))
+    end
+    return Tuple(unique!(inds))
 end
