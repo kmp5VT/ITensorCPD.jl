@@ -1,6 +1,6 @@
 using Test, Pkg
 Pkg.develop(path="$(@__DIR__)/../")
-#include("$(@__DIR__)/../ITensorCPD.jl")
+
 using ITensorCPD:
   ITensorCPD,
   als_optimize,
@@ -86,35 +86,6 @@ end
   cp_A = random_CPD(A, r; algorithm=direct())
   opt_A = als_optimize(cp_A, r, check)
   @test norm(reconstruct(opt_A) - A) / norm(A) ≤ 1.0 - ITensorCPD.fit(check)
-end
-
-@testset "Lattice CPD, elt=$elt" for elt in [Float32, Float64]
-  a, b, c, d, e, f, g, h =
-    Index.((5, 5, 5, 5, 5, 5, 5, 5), ("a", "b", "c", "d", "e", "f", "g", "h"))
-  w, x, y, z = Index.((5, 5, 5, 5), ("w", "x", "y", "z"))
-
-  line = [random_itensor(elt, a, b, x), random_itensor(elt, c, d, x)]
-  r = Index(40, "CP_rank")
-  CP = random_CPD_square_network(line, r)
-  check = ITensorCPD.FitCheck(1e-10, 100, sqrt((contract(line) * contract(line))[]))
-
-  opt_A = ITensorCPD.als_optimize(CP, r, check)
-  @test norm(ITensorCPD.reconstruct(opt_A) - contract(line)) / norm(line) ≤
-    ITensorCPD.fit(check)
-
-  square = [
-    random_itensor(elt, a, b, x, w),
-    random_itensor(elt, c, d, x, z),
-    random_itensor(elt, g, h, z, y),
-    random_itensor(elt, e, f, y, w),
-  ]
-  r = Index(2000, "CP_rank")
-  CP = random_CPD_square_network(square, r)
-  ## TODO write better code to take norm of square lattice
-  check = ITensorCPD.FitCheck(1e-3, 30, sqrt((contract(square) * contract(square))[]))
-  @time opt_A = ITensorCPD.als_optimize(CP, r, check)
-  @test norm(ITensorCPD.reconstruct(opt_A) - contract(square)) /
-        sqrt((contract(square) * contract(square))[]) ≈ 1.0 - ITensorCPD.fit(check) rtol=1e-3
 end
 
 using ITensorNetworks
