@@ -101,7 +101,7 @@ include("util.jl")
     ny = 3
     s = IndsNetwork(named_grid((nx, ny)); link_space = 2)
 
-    tn = ising_network(elt, s, beta; h)
+    tn = ising_network(elt, s, beta)
 
     r = Index(10, "CP_rank")
     s1 = subgraph(tn, ((1, 1), (1, 2), (1, 3), (2, 3), (3, 3), (3, 2), (3, 1), (2, 1)))
