@@ -75,7 +75,11 @@ end
 
     check = ITensorCPD.FitCheck(1e-15, 100, norm(A))
     opt_A = als_optimize(cp_A, r, check)
-    @test norm(reconstruct(opt_A) - A) / norm(A) ≤ 1.0 - ITensorCPD.fit(check)
+    @test isapprox(
+        check.final_fit,
+        1.0 - norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A);
+        rtol = 1e-2,
+    )
 
     cp_A = random_CPD(A, r; algorithm = direct())
     opt_A = als_optimize(cp_A, r; maxiters = 100)
@@ -84,7 +88,11 @@ end
     check = ITensorCPD.FitCheck(1e-15, 100, norm(A))
     cp_A = random_CPD(A, r; algorithm = direct())
     opt_A = als_optimize(cp_A, r, check)
-    @test norm(reconstruct(opt_A) - A) / norm(A) ≤ 1.0 - ITensorCPD.fit(check)
+    @test isapprox(
+        check.final_fit,
+        1.0 - norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A);
+        rtol = 1e-2,
+    )
 end
 
 using ITensorNetworks
@@ -101,6 +109,7 @@ include("util.jl")
     ny = 3
     s = IndsNetwork(named_grid((nx, ny)); link_space = 2)
 
+    beta = 1
     tn = ising_network(elt, s, beta)
 
     r = Index(10, "CP_rank")
