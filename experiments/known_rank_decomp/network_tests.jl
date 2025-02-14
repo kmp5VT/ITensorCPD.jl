@@ -1,6 +1,7 @@
 using ITensors
 using ITensorCPD: ITensorCPD, als_optimize
 using LinearAlgebra
+using Random
 
 using ITensorNetworks: ITensorNetworks, ITensorNetwork, IndsNetwork, commoninds, delta_network, edges, src, dst, degree, insert_linkinds
 using ITensorNetworks.NamedGraphs
@@ -107,46 +108,53 @@ beta = 0.4
 elt = Float64
 tn = ising_network(elt, s, beta)
 
-l = 3
-r = Index(l, "CPD")
-# rcpd_edge = NDTensors.data(ITensorCPD.reconstruct(ITensorCPD.random_CPD(tn[2,2], r)))
-for v in ITensorNetworks.vertices(tn)
-  # d = NDTensors.data(tn[v])
-  # tn[v] = itensor(view(rcpd_edge, 1:length(d)), inds(tn[v]))
-  tn[v] = ITensorCPD.reconstruct(ITensorCPD.random_CPD(tn[v], r))
-end
+nranks_vals = Vector{Vector{Float64}}()
+kranks = [2,3,4,10,20,50,100]
 
-# ring_subtn = subgraph(tn, ring_inds(2,5,5))
-# using Random
-# fit = ITensorCPD.FitCheck(1e-8, 1000, norm(tn[3,4]))
-# r = Index(4, "CP_rank")
-# f = 0
-# for i in 1:5
-#   initial_guess = ITensorCPD.random_CPD(tn[2,2], r; rng = Random.MersenneTwister(rand(Int32)));
-#   @time cpopt = ITensorCPD.als_optimize(initial_guess, r, fit);
-#   curr_f = ITensorCPD.fit(fit)
-#   f = curr_f > f ? curr_f : f
-# end
-# @show f
+for known_ranks in [50,100]
+  r = Index(known_ranks, "CPD")
+  # rcpd_edge = NDTensors.data(ITensorCPD.reconstruct(ITensorCPD.random_CPD(tn[2,2], r)))
+  for v in ITensorNetworks.vertices(tn)
+    # d = NDTensors.data(tn[v])
+    # tn[v] = itensor(view(rcpd_edge, 1:length(d)), inds(tn[v]))
+    tn[v] = ITensorCPD.reconstruct(ITensorCPD.random_CPD(tn[v], r))
+  end
 
-### Set up the CP problem ###
-# ring_subtn = subgraph(tn, ring_inds(2,5,5))
-vals = Vector{Float64}()
-for rank in l:l:10*l
-ring_subtn = subgraph(tn, ((2,2),(2,3),(2,4)))
-n_ringsubtn = norm_of_loop(ring_subtn)
-fit = ITensorCPD.FitCheck(1e-8, 1000, n_ringsubtn)
-r = Index(rank, "CP_rank")
-f = 0;
-for i in 1:2
-  initial_guess = ITensorCPD.random_CPD_ITensorNetwork(ring_subtn, r; rng = Random.MersenneTwister(rand(Int32)));
-  @time cpopt = ITensorCPD.als_optimize(initial_guess, r, fit;verbose=false);
-  curr_f = ITensorCPD.fit(fit)
-  f = curr_f > f ? curr_f : f
-end
-push!(vals, f)
+  vals = Vector{Float64}()
+  for rank in 20:20:200
+    # fit = ITensorCPD.FitCheck(1e-8, 1000, norm(tn[3,4]))
+    # r = Index(rank, "CP_rank")
+    # f = 0
+    # for i in 1:5
+    #   initial_guess = ITensorCPD.random_CPD(tn[2,2], r; rng = Random.MersenneTwister(rand(Int32)));
+    #   @time cpopt = ITensorCPD.als_optimize(initial_guess, r, fit; verbose=false);
+    #   curr_f = ITensorCPD.fit(fit)
+    #   f = curr_f > f ? curr_f : f
+    # end
+    #ring_subtn = subgraph(tn, ((2,2),(2,3),(2,4)))
+    ring_subtn = subgraph(tn, ring_inds(2,5,5))
+    n_ringsubtn = norm_of_loop(ring_subtn)
+    fit = ITensorCPD.FitCheck(1e-4, 1000, n_ringsubtn)
+    r = Index(Int(round(rank)), "CP_rank")
+    @show r
+    f = 0;
+    for i in 1:1
+      initial_guess = ITensorCPD.random_CPD_ITensorNetwork(ring_subtn, r; rng = Random.MersenneTwister(rand(Int32)));
+      @time cpopt = ITensorCPD.als_optimize(initial_guess, r, fit;verbose=false);
+      curr_f = ITensorCPD.fit(fit)
+      f = curr_f > f ? curr_f : f
+    end
+    push!(vals, f)
+  end
+  push!(nranks_vals, vals)
 end
 
 using Plots
-plot([x for x in 1:2:26], vals, )
-# // two had a rank of 4 with accuract 0.9999999103344339  
+p = plot()
+for r in 1:7
+  p = plot!([Int(round(x)) for x in 20:20:200], 1 .- nranks_vals[r], label="Known rank of $(kranks[r])")
+end
+p
+plot!(title="Full inner ring", ylabel="L2 relative error", xlabel="rank", yrange=[0,0.3])
+
+savefig("/mnt/home/kpierce/.julia/dev/ITensorCPD/experiments/experiment_plots/known_ranks/full_ring.pdf")
