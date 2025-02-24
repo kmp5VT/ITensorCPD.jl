@@ -12,7 +12,7 @@ function had_contract(A::ITensor, B::ITensor, had::Index; α = true)
         inds_c = noncommoninds(A, B)
         elt = promote_type(eltype(A), eltype(B))
         C = ITensor(elt, vcat(had, inds_c...))
-        ## Right now I have to fill C with zeros because I hate empty tensor
+        ## Right now I have to fill C with zeros because empty tensor
         fill!(C, zero(elt))
         slices_C = eachslice(array(C); dims = 1)
         for i = 1:length(slices_A)

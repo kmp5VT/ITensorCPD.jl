@@ -3,7 +3,7 @@ function als_optimize(cp::CPD, rank::Index; maxiters = 1, kwargs...)
     return als_optimize(cp, rank, NoCheck(maxiters); kwargs...)
 end
 
-function als_optimize(cp::CPD, rank::Index, converge)
+function als_optimize(cp::CPD, rank::Index, converge; verbose=true)
     iter = 0
     part_grammian = cp.factors .* prime.(cp.factors; tags = tags(rank))
     num_factors = length(cp.factors)
@@ -37,9 +37,10 @@ function als_optimize(cp::CPD, rank::Index, converge)
         end
 
         # potentially save the MTTKRP for the loss function
+
         save_mttkrp(converge, mtkrp)
 
-        if check_converge(converge, factors, λ, part_grammian)
+        if check_converge(converge, factors, λ, part_grammian; verbose)
             break
         end
         iter += 1
