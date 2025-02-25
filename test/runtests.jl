@@ -68,26 +68,41 @@ end
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
     A = random_itensor(elt, i, j, k)
-    cp_A = random_CPD(A, r)
-
-    opt_A = als_optimize(cp_A, r; maxiters = 100)
+    ## Calling decompose
+    opt_A = ITensorCPD.decompose(A, 400)
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
 
+    @test_throws TypeError ITensorCPD.decompose(A, 400; solver=A)
+
     check = ITensorCPD.FitCheck(1e-15, 100, norm(A))
-    opt_A = als_optimize(cp_A, r, check)
+    opt_A = ITensorCPD.decompose(A, 400; check)
+
+    ## Build a random guess
+    cp_A = random_CPD(A, r)
+    
+    ## Optimize with no inputs
+    opt_A = als_optimize(cp_A)
+    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
+
+    ## Optimize with one input
+    opt_A = als_optimize(cp_A; alg=ITensorCPD.KRP())
+    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
+
+    opt_A = als_optimize(cp_A; alg=ITensorCPD.KRP(), check=ITensorCPD.NoCheck(10))
+    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-1
+
+    opt_A = als_optimize(cp_A;  alg=ITensorCPD.KRP(), check)
     @test isapprox(
         check.final_fit,
         1.0 - norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A);
         rtol = 1e-2,
     )
 
-    cp_A = random_CPD(A, r; algorithm = direct())
-    opt_A = als_optimize(cp_A, r; maxiters = 100)
+    opt_A = als_optimize(cp_A; alg=ITensorCPD.direct())
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
 
     check = ITensorCPD.FitCheck(1e-15, 100, norm(A))
-    cp_A = random_CPD(A, r; algorithm = direct())
-    opt_A = als_optimize(cp_A, r, check)
+    opt_A = als_optimize(cp_A; alg=ITensorCPD.direct(), check)
     @test isapprox(
         check.final_fit,
         1.0 - norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A);

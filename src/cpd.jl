@@ -2,35 +2,29 @@ using ITensors
 using ITensors.NDTensors: similartype
 using Random
 
-struct CPD
-    target::Any
+struct CPD{TargetT}
+    target::TargetT
     factors::Vector{ITensor}
     λ::ITensor
-    ## potentially this could be a dict of 
-    ## extra arguments which could be queried 
-    mttkrp_alg::MttkrpAlgorithm
-    additional_items::Dict
 end
 
-CPD(target, factors, λ) = CPD(target, factors, λ, direct())
-function CPD(target, factors, lambda, mttkrp_alg)
-    return CPD(target, factors, lambda, mttkrp_alg, Dict(()))
-end
+# CPD(target, factors, λ) = CPD(target, factors, λ)
 
 factors(cp::CPD) = getproperty(cp, :factors)
-mttkrp_algorithm(cp::CPD) = getproperty(cp, :mttkrp_alg)
+
 Base.getindex(cp::CPD, i) = cp.factors[i]
 Base.getindex(cp::CPD) = cp.λ
 
+cp_rank(cp::CPD) = ind(cp[], 1)
+
 function Base.copy(cp::CPD)
-    return CPD(cp.target, copy(cp.factors), copy(cp.λ), cp.mttkrp_alg, cp.additional_items)
+    return CPD(cp.target, copy(cp.factors), copy(cp.λ))
 end
 
 Base.eltype(cp::CPD) = return eltype(cp.λ)
 
-## Right now this only works for a single itensor.
-## However, it should be possible to make it for a arbitrary tensor network.
-function random_CPD(target::ITensor, rank::Index; algorithm = nothing, rng = nothing)
+## This makes a random CPD for a given ITensor
+function random_CPD(target::ITensor, rank::Index; rng = nothing)
     rng = isnothing(rng) ? MersenneTwister(3) : rng
     elt = eltype(target)
     cp = Vector{ITensor}([])
@@ -40,11 +34,11 @@ function random_CPD(target::ITensor, rank::Index; algorithm = nothing, rng = not
         rtensor, l = row_norm(random_itensor(rng, elt, rank, i), i)
         push!(cp, rtensor)
     end
-    return isnothing(algorithm) ? CPD(target, cp, l) : CPD(target, cp, l, algorithm)
+    return CPD(target, cp, l)
 end
 
 using ITensorNetworks: ITensorNetwork, nv, vertices
-function random_CPD_ITensorNetwork(target::ITensorNetwork, rank::Index; rng = nothing)
+function random_CPD(target::ITensorNetwork, rank::Index; rng = nothing)
     rng = isnothing(rng) ? MersenneTwister(3) : rng
     verts = vertices(target)
     elt = eltype(target[first(verts)])
