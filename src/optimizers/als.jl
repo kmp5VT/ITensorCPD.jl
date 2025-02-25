@@ -2,30 +2,60 @@ using LinearAlgebra: ColumnNorm, diagm
 abstract type CPDOptimizer end
 
 struct ALS <: CPDOptimizer
+    target
     mttkrp_alg::MttkrpAlgorithm
     additional_items::Dict
     check::ConvergeAlg
 end
 
-function decompose(A, rank::Int; solver::Union{CPDOptimizer,Nothing} = nothing, rng=nothing, alg=nothing, check=nothing, maxiter=nothing, verbose=false)
-    CP = random_CPD(A, Index(rank, "CP Rank"); rng)
-    if isnothing(solver)
-        return als_optimize(CP; alg, check, maxiter, verbose)
-    else
-        throw("OptimizerError")
-    end
-end
-
-function als_optimize(cp::CPD{<:ITensor}; alg=nothing, check=nothing, maxiter=nothing, verbose=false)
+function als_optimize(target, cp::CPD{<:ITensor}; alg=nothing, check=nothing, maxiter=nothing, verbose=false)
     alg = isnothing(alg) ? direct() : alg
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
-    return als_optimize(cp, ALS(alg, Dict(), check); verbose)
+    return optimize(cp, ALS(target, alg, Dict(), check); verbose)
 end
 
-function als_optimize(cp::CPD{<:ITensorNetwork})
+function als_optimize(target, cp::CPD{<:ITensorNetwork}; alg=network_solver(), 
+    check=nothing, maxiter=nothing, verbose=false)
+    check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
+    verts = vertices(target)
+    elt = eltype(target[first(verts)])
+    
+    partial_mtkrp = similar(cp)
+    external_ind_to_vertex = Dict()
+    extern_ind_to_factor = Dict()
+    factor_number_to_partial_cont_number = Dict()
+
+    # What we need to do here is walk through the CP and find where
+    # Each factor connects to in the given target newtork.
+    # This will assume all external legs are connected.
+    factor_number = 1
+    partial_cont_number = 1
+    for v in verts
+        partial = target[v]
+        for uniq in uniqueinds(target, v)
+            external_ind_to_vertex[uniq] = v
+            partial = had_contract(partial, factor, rank)
+            extern_ind_to_factor[uniq] = factor_number
+            factor_number_to_partial_cont_number[factor_number] = partial_cont_number
+            factor_number += 1
+        end
+        push!(partial_mtkrp, partial)
+        partial_cont_number += 1
+    end
+
+    ALS(target, 
+    alg,
+    Dict(
+        :partial_mtkrp => partial_mtkrp,
+        :ext_ind_to_vertex => external_ind_to_vertex,
+        :ext_ind_to_factor => extern_ind_to_factor,
+        :factor_to_part_cont => factor_number_to_partial_cont_number,
+        ),
+        check
+        )
 end
 
-function als_optimize(cp::CPD, als::ALS; verbose=true)
+function optimize(cp::CPD, als::ALS; verbose=true)
     rank = cp_rank(cp)
     iter = 0
     part_grammian = cp.factors .* prime.(cp.factors; tags = tags(rank))
@@ -37,7 +67,7 @@ function als_optimize(cp::CPD, als::ALS; verbose=true)
         mtkrp = nothing
         for fact = 1:num_factors
             ## compute the matrized tensor time khatri rao product with a provided algorithm.
-            mtkrp = mttkrp(als.mttkrp_alg, factors, cp, rank, fact)
+            mtkrp = mttkrp(als.mttkrp_alg, als, factors, cp, rank, fact)
 
             ## compute the grammian which requires the hadamard product
             grammian = similar(part_grammian[1])
@@ -70,7 +100,7 @@ function als_optimize(cp::CPD, als::ALS; verbose=true)
         iter += 1
     end
 
-    return CPD(cp.target, factors, λ)
+    return CPD{typeof(als.target)}(factors, λ)
 end
 
 # function als_direct_optimize(cp::CPD, als::ALS, converge)

@@ -22,7 +22,7 @@ function check_converge(check::NoCheck, factors, λ, partial_gram; verbose = fal
     return false
 end
 
-function save_mttkrp(::ConvergeAlg, ::ITensor) end
+function save_mttkrp(::NoCheck, ::ITensor) end
 
 mutable struct FitCheck <: ConvergeAlg
     iter::Int

@@ -4,38 +4,38 @@ using ITensors.NDTensors: data
 abstract type MttkrpAlgorithm end
 struct KRP <: MttkrpAlgorithm end
 
-function post_solve(::MttkrpAlgorithm, factors, λ, cp, rank::Index, fact::Integer) end
-
 ## This version assumes we have the exact target and can form the tensor
 ## This forms the khatri-rao product for a single value of r and immediately
 ## contracts it with the target tensor. This is relatively expensive because the KRP will be
 ## order $d - 1$ where d is the number of modes in the target tensor.
 ## This process could be distributed.
-function mttkrp(::KRP, factors, cp, rank::Index, fact::Int)
+function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
     ## form the tensor which will be written
     m = similar(factors[fact])
 
     factor_portion = factors[1:end.!=fact]
     for i = 1:dim(rank)
         array(m)[i, :] = array(
-            cp.target *
+            als.target *
             contract(map(x -> itensor(array(x)[i, :], ind(x, 2)), factor_portion)),
         )
     end
     return m
 end
 
+function post_solve(::KRP, factors, λ, cp, rank::Index, fact::Integer) end
+
 struct direct <: MttkrpAlgorithm end
 
 ## This code skips computing the khatri-rao product by incrementally 
 ## contracting the factor matrices into the tensor for each value of r
 ## This process could be distributed.
-function mttkrp(::direct, factors, cp, rank::Index, fact::Int)
+function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
     m = similar(factors[fact])
 
     factor_portion = factors[1:end.!=fact]
     for i = 1:dim(rank)
-        mtkrp = cp.target
+        mtkrp = als.target
         for ten in factor_portion
             mtkrp = itensor(array(ten)[i, :], ind(ten, 2)) * mtkrp
         end
@@ -43,6 +43,8 @@ function mttkrp(::direct, factors, cp, rank::Index, fact::Int)
     end
     return m
 end
+
+function post_solve(::direct, factors, λ, cp, rank::Index, fact::Integer) end
 
 ################
 ## This solver is based on ITensorNetwork
@@ -53,7 +55,7 @@ end
 
 struct network_solver <: MttkrpAlgorithm end
 
-function mttkrp(::network_solver, factors, cp, rank::Index, fact::Int)
+function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
     m = similar(factors[fact])
 
     target_index = ind(factors[fact], 2)
@@ -79,7 +81,7 @@ function mttkrp(::network_solver, factors, cp, rank::Index, fact::Int)
     return p
 end
 
-function post_solve(::network_solver, factors, λ, cp, rank::Index, fact::Integer)
+function post_solve(::network_solver, als, factors, λ, cp, rank::Index, fact::Integer)
     ## Once done with all factor which connect to it, then go through uniqueinds and contract in the 
     ## associated new factors
     partial_ind = cp.additional_items[:factor_to_part_cont][fact]
