@@ -81,28 +81,27 @@ end
     cp_A = random_CPD(A, r)
     
     ## Optimize with no inputs
-    opt_A = als_optimize(cp_A)
+    opt_A = als_optimize(A, cp_A)
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
 
     ## Optimize with one input
-    opt_A = als_optimize(cp_A; alg=ITensorCPD.KRP())
+    opt_A = als_optimize(A, cp_A; alg=ITensorCPD.KRP())
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
 
-    opt_A = als_optimize(cp_A; alg=ITensorCPD.KRP(), check=ITensorCPD.NoCheck(10))
+    opt_A = als_optimize(A, cp_A; alg=ITensorCPD.KRP(), check=ITensorCPD.NoCheck(10))
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-1
 
-    opt_A = als_optimize(cp_A;  alg=ITensorCPD.KRP(), check)
+    opt_A = als_optimize(A, cp_A;  alg=ITensorCPD.KRP(), check)
     @test isapprox(
         check.final_fit,
         1.0 - norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A);
         rtol = 1e-2,
     )
 
-    opt_A = als_optimize(cp_A; alg=ITensorCPD.direct())
+    opt_A = als_optimize(A, cp_A; alg=ITensorCPD.direct())
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
 
-    check = ITensorCPD.FitCheck(1e-15, 100, norm(A))
-    opt_A = als_optimize(cp_A; alg=ITensorCPD.direct(), check)
+    opt_A = als_optimize(A, cp_A; alg=ITensorCPD.direct(), check)
     @test isapprox(
         check.final_fit,
         1.0 - norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A);
@@ -111,6 +110,7 @@ end
 end
 
 using ITensorNetworks
+using ITensorNetworks: random_tensornetwork
 using ITensorNetworks.NamedGraphs
 using ITensorNetworks.NamedGraphs.GraphsExtensions: subgraph
 using ITensorNetworks.NamedGraphs.NamedGraphGenerators: named_grid
@@ -118,6 +118,18 @@ using ITensorNetworks.NamedGraphs.NamedGraphGenerators: named_grid
 using ITensorNetworks: IndsNetwork, delta_network, edges, src, dst, degree, insert_linkinds
 using ITensors
 include("util.jl")
+
+#@testset "Known rank Network" for elt in (Float32, Float64)
+    nx = 3
+    grid = named_grid((nx,2))
+    tn1 = random_tensornetwork(grid; link_space = 1)
+    tn2 = random_tensornetwork(grid; link_space = 1)
+    tn = tn1 + tn2
+
+    subtn = subgraph(tn, ((1,1),(2,1),(3,1)))
+    cp_guess = random_CPD(subtn, Index(2,"rank"))
+
+end
 
 @testset "itensor_networks" for elt in (Float32, Float64)
     nx = 3
