@@ -111,7 +111,8 @@ tn = ising_network(elt, s, beta)
 nranks_vals = Vector{Vector{Float64}}()
 kranks = [2,3,4,10,20,50,100]
 
-for known_ranks in [50,100]
+ring_subtn = subgraph(tn, ring_inds(2,5,5))
+for known_ranks in kranks[1:3]
   r = Index(known_ranks, "CPD")
   # rcpd_edge = NDTensors.data(ITensorCPD.reconstruct(ITensorCPD.random_CPD(tn[2,2], r)))
   for v in ITensorNetworks.vertices(tn)
@@ -121,7 +122,7 @@ for known_ranks in [50,100]
   end
 
   vals = Vector{Float64}()
-  for rank in 20:20:200
+  for rank in 10:5:100
     # fit = ITensorCPD.FitCheck(1e-8, 1000, norm(tn[3,4]))
     # r = Index(rank, "CP_rank")
     # f = 0
@@ -131,16 +132,16 @@ for known_ranks in [50,100]
     #   curr_f = ITensorCPD.fit(fit)
     #   f = curr_f > f ? curr_f : f
     # end
-    #ring_subtn = subgraph(tn, ((2,2),(2,3),(2,4)))
-    ring_subtn = subgraph(tn, ring_inds(2,5,5))
+    ring_subtn = subgraph(tn, ((2,2),(2,3),(3,3),(3,2)))
+    #ring_subtn = subgraph(tn, ring_inds(2,5,5))
     n_ringsubtn = norm_of_loop(ring_subtn)
-    fit = ITensorCPD.FitCheck(1e-4, 1000, n_ringsubtn)
+    fit = ITensorCPD.FitCheck(1e-8, 1000, n_ringsubtn)
     r = Index(Int(round(rank)), "CP_rank")
     @show r
     f = 0;
     for i in 1:1
       initial_guess = ITensorCPD.random_CPD_ITensorNetwork(ring_subtn, r; rng = Random.MersenneTwister(rand(Int32)));
-      @time cpopt = ITensorCPD.als_optimize(initial_guess, r, fit;verbose=false);
+      @time cpopt = ITensorCPD.als_optimize(initial_guess, r, fit;verbose=true);
       curr_f = ITensorCPD.fit(fit)
       f = curr_f > f ? curr_f : f
     end
@@ -151,10 +152,10 @@ end
 
 using Plots
 p = plot()
-for r in 1:7
-  p = plot!([Int(round(x)) for x in 20:20:200], 1 .- nranks_vals[r], label="Known rank of $(kranks[r])")
+for r in 1:3
+  p = plot!([Int(round(x)) for x in 10:5:100], 1 .- nranks_vals[r], label="Known rank of $(kranks[r])")
 end
 p
-plot!(title="Full inner ring", ylabel="L2 relative error", xlabel="rank", yrange=[0,0.3])
+plot!(title="Full inner ring", ylabel="L2 relative error", xlabel="rank", yrange=[0,0.01])
 
 savefig("/mnt/home/kpierce/.julia/dev/ITensorCPD/experiments/experiment_plots/known_ranks/full_ring.pdf")
