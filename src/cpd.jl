@@ -46,21 +46,12 @@ function random_CPD(target::ITensorNetwork, rank::Index; rng = nothing)
     ## What we need to do is loop through every
     ## vertex and find the common/non-common inds.
     ## for every noncommonind push
-    factor_number = 1
-    partial_cont_number = 1
     for v in verts
         partial = target[v]
         for uniq in uniqueinds(target, v)
-            external_ind_to_vertex[uniq] = v
             factor = row_norm(random_itensor(rng, elt, rank, uniq), uniq)[1]
             push!(cp, factor)
-            # partial = had_contract(partial, factor, rank)
-            # extern_ind_to_factor[uniq] = factor_number
-            # factor_number_to_partial_cont_number[factor_number] = partial_cont_number
-            # factor_number += 1
         end
-        # push!(partial_mtkrp, partial)
-        # partial_cont_number += 1
     end
 
     l = fill!(ITensor(elt, rank), zero(elt))

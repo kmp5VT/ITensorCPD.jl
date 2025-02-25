@@ -64,7 +64,6 @@ end
 
 ## Complex optimization still does not work
 @testset "Standard CPD, elt=$elt" for elt in [Float32, Float64]
-    ## Working here
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
     A = random_itensor(elt, i, j, k)
@@ -75,13 +74,13 @@ end
     @test_throws TypeError ITensorCPD.decompose(A, 400; solver=A)
 
     check = ITensorCPD.FitCheck(1e-15, 100, norm(A))
-    opt_A = ITensorCPD.decompose(A, 400; check)
+    opt_A = ITensorCPD.decompose(A, 400; check);
 
     ## Build a random guess
     cp_A = random_CPD(A, r)
     
     ## Optimize with no inputs
-    opt_A = als_optimize(A, cp_A)
+    opt_A = als_optimize(A, cp_A; check, verbose=true);
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
 
     ## Optimize with one input
@@ -119,16 +118,27 @@ using ITensorNetworks: IndsNetwork, delta_network, edges, src, dst, degree, inse
 using ITensors
 include("util.jl")
 
-#@testset "Known rank Network" for elt in (Float32, Float64)
+@testset "Known rank Network" for elt in (Float32, Float64)
     nx = 3
     grid = named_grid((nx,2))
     tn1 = random_tensornetwork(grid; link_space = 1)
     tn2 = random_tensornetwork(grid; link_space = 1)
     tn = tn1 + tn2
 
-    subtn = subgraph(tn, ((1,1),(2,1),(3,1)))
-    cp_guess = random_CPD(subtn, Index(2,"rank"))
+    subtn = subgraph(tn, ((1,1),(2,1),(3,1)))    
+    s = subtn.data_graph.vertex_data.values
+    ## TODO make this with ITensorNetworks
+    sp = replace_inner_w_prime_loop(s)
 
+    sqrs = s[1] * sp[1]
+    for i = 2:length(sp)
+        sqrs = sqrs * s[i] * sp[i]
+    end
+
+    check = ITensorCPD.FitCheck(1e-10, 1000, sqrt(sqrs[]))
+
+    cp_guess = random_CPD(subtn, Index(2,"rank"))
+    als_optimize(subtn, cp_guess;check, verbose=true);
 end
 
 @testset "itensor_networks" for elt in (Float32, Float64)
@@ -151,11 +161,11 @@ end
         sqrs = sqrs * sising[i] * sisingp[i]
     end
 
-    fit = ITensorCPD.FitCheck(1e-3, 6, sqrt(sqrs[]))
-    cpopt = ITensorCPD.als_optimize(ITensorCPD.random_CPD_ITensorNetwork(s1, r), r, fit)
+    check = ITensorCPD.FitCheck(1e-3, 6, sqrt(sqrs[]))
+    cpopt = ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = true)
     1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract(s1)) / norm(contract(s1))
     @test isapprox(
-        fit.final_fit,
+        check.final_fit,
         1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract(s1)) / norm(contract(s1));
         rtol = 1e-3,
     )

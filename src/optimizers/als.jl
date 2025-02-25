@@ -8,19 +8,20 @@ struct ALS <: CPDOptimizer
     check::ConvergeAlg
 end
 
-function als_optimize(target, cp::CPD{<:ITensor}; alg=nothing, check=nothing, maxiter=nothing, verbose=false)
+function als_optimize(target::ITensor, cp::CPD{<:ITensor}; alg=nothing, check=nothing, maxiter=nothing, verbose=false)
     alg = isnothing(alg) ? direct() : alg
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
     return optimize(cp, ALS(target, alg, Dict(), check); verbose)
 end
 
-function als_optimize(target, cp::CPD{<:ITensorNetwork}; alg=network_solver(), 
+function als_optimize(target::ITensorNetwork, cp::CPD{<:ITensorNetwork}; alg=network_solver(), 
     check=nothing, maxiter=nothing, verbose=false)
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
     verts = vertices(target)
     elt = eltype(target[first(verts)])
+    cpRank = cp_rank(cp)
     
-    partial_mtkrp = similar(cp)
+    partial_mtkrp = typeof(similar(cp.factors))()
     external_ind_to_vertex = Dict()
     extern_ind_to_factor = Dict()
     factor_number_to_partial_cont_number = Dict()
@@ -34,16 +35,18 @@ function als_optimize(target, cp::CPD{<:ITensorNetwork}; alg=network_solver(),
         partial = target[v]
         for uniq in uniqueinds(target, v)
             external_ind_to_vertex[uniq] = v
-            partial = had_contract(partial, factor, rank)
-            extern_ind_to_factor[uniq] = factor_number
-            factor_number_to_partial_cont_number[factor_number] = partial_cont_number
+            factor_pos = findfirst(x -> x == uniq, ind.(cp.factors, 2))
+            factor = cp.factors[factor_pos]
+            partial = had_contract(partial, factor, cpRank)
+            extern_ind_to_factor[uniq] = factor_pos
+            factor_number_to_partial_cont_number[factor_pos] = partial_cont_number
             factor_number += 1
         end
         push!(partial_mtkrp, partial)
         partial_cont_number += 1
     end
 
-    ALS(target, 
+    als = ALS(target, 
     alg,
     Dict(
         :partial_mtkrp => partial_mtkrp,
@@ -53,6 +56,7 @@ function als_optimize(target, cp::CPD{<:ITensorNetwork}; alg=network_solver(),
         ),
         check
         )
+    optimize(cp, als; verbose)
 end
 
 function optimize(cp::CPD, als::ALS; verbose=true)
@@ -87,7 +91,7 @@ function optimize(cp::CPD, als::ALS; verbose=true)
             )
             part_grammian[fact] = factors[fact] * prime(factors[fact]; tags = tags(rank))
 
-            post_solve(als.mttkrp_alg, factors, λ, cp, rank, fact)
+            post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
         end
 
         # potentially save the MTTKRP for the loss function
