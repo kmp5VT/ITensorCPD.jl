@@ -127,7 +127,6 @@ include("util.jl")
 
     subtn = subgraph(tn, ((1,1),(2,1),(3,1)))    
     s = subtn.data_graph.vertex_data.values
-    ## TODO make this with ITensorNetworks
     sp = replace_inner_w_prime_loop(s)
 
     sqrs = s[1] * sp[1]
@@ -137,8 +136,39 @@ include("util.jl")
 
     check = ITensorCPD.FitCheck(1e-10, 1000, sqrt(sqrs[]))
 
-    cp_guess = random_CPD(subtn, Index(2,"rank"))
-    als_optimize(subtn, cp_guess;check, verbose=true);
+    ITensorCPD.decompose(subtn, Index(2,"rank"); check, verbose=false);
+    check.final_fit ≈ 1.0
+
+    nx = ny = 5
+    grid = named_grid((nx,ny))
+    tn1 = random_tensornetwork(grid; link_space = 1)
+    tn2 = random_tensornetwork(grid; link_space = 1)
+
+    tn = tn1 + tn2
+
+    subtn = subgraph(tn, ((2,2),(2,3),(2,4), 
+                            (3,4), (4,4),
+                            (4,3), (4,2),
+                            (3,2))) 
+                            
+    s = subtn.data_graph.vertex_data.values
+    sp = replace_inner_w_prime_loop(s)
+
+    sqrs = s[1] * sp[1]
+    for i = 2:length(sp)
+        sqrs = sqrs * s[i] * sp[i]
+    end
+    check = ITensorCPD.FitCheck(1e-20, 1000, sqrt(sqrs[]))
+
+    using Random
+    rng = MersenneTwister(3)
+    bestfit = 0;
+    for i in 1:10
+        opt = ITensorCPD.decompose(subtn, Index(2,"rank"); verbose=false, rng);
+        fit = 1.0 - (norm(reconstruct(opt) - contract(subtn)) / norm(contract(subtn)))
+        bestfit = fit > bestfit ? fit : bestfit
+    end
+    @test bestfit ≈ 1.0
 end
 
 @testset "itensor_networks" for elt in (Float32, Float64)
