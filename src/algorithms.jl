@@ -23,7 +23,7 @@ function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
     return m
 end
 
-function post_solve(::KRP, factors, λ, cp, rank::Index, fact::Integer) end
+function post_solve(::KRP, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 struct direct <: MttkrpAlgorithm end
 
@@ -44,7 +44,7 @@ function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
     return m
 end
 
-function post_solve(::direct, factors, λ, cp, rank::Index, fact::Integer) end
+function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 ################
 ## This solver is based on ITensorNetwork

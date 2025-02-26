@@ -14,9 +14,10 @@ function als_optimize(target::ITensor, cp::CPD{<:ITensor}; alg=nothing, check=no
     return optimize(cp, ALS(target, alg, Dict(), check); verbose)
 end
 
-function als_optimize(target::ITensorNetwork, cp::CPD{<:ITensorNetwork}; alg=network_solver(), 
+function als_optimize(target::ITensorNetwork, cp::CPD{<:ITensorNetwork}; alg=nothing, 
     check=nothing, maxiter=nothing, verbose=false)
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
+    alg = isnothing(alg) ? network_solver() : alg
     verts = vertices(target)
     elt = eltype(target[first(verts)])
     cpRank = cp_rank(cp)
