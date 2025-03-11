@@ -9,7 +9,7 @@ using ITensorCPD:
     row_norm,
     reconstruct,
     had_contract
-using ITensors: Index, ITensor, array, contract, dim, norm, random_itensor
+using ITensors: Index, ITensor, itensor, array, contract, dim, norm, random_itensor
 
 @testset "Norm Row test, elt=$elt" for elt in [Float32, Float64, ComplexF32, ComplexF64]
     i, j = Index.((20, 30))
@@ -26,6 +26,43 @@ using ITensors: Index, ITensor, array, contract, dim, norm, random_itensor
 
     Aijnorm, lam = row_norm(A, i, j)
     @test real(one(elt)) ≈ sum(array(Aijnorm .^ 2))
+end
+
+@testset "Hadamard contract algorithm, elt=$elt" for elt in [Float32, Float64, ComplexF32, ComplexF64]
+    i, j, k = Index.((20, 30, 40))
+    r = Index(400, "CP_rank")
+    A = random_itensor(elt, i, j, k)
+
+    cp = random_CPD(A, r);
+
+    Dhad = had_contract(cp[1],cp[2], r)
+
+    Dex = ITensor(elt, r,i,j)
+    for n in 1:400
+        for l in 1:20
+            for m in 1:30
+                Dex[n,l,m] = cp[1][n,l] * cp[2][n,m]
+            end
+        end
+    end
+
+    @test norm(Dex - Dhad) / norm(Dex) < 1e-7
+    
+    v = Array(transpose(array(cp[2])))
+    B = itensor(v, j,r)
+
+    had_contract(cp[1], B, r)
+
+    Dex = ITensor(elt, r,i,j)
+    for n in 1:400
+        for l in 1:20
+            for m in 1:30
+                Dex[n,l,m] = cp[1][n,l] * B[m,n]
+            end
+        end
+    end
+
+    @test norm(Dex - Dhad) / norm(Dex) < 1e-7
 end
 
 @testset "reconstruct, elt=$elt" for elt in [Float32, Float64, ComplexF32, ComplexF64]
