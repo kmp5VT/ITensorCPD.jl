@@ -14,12 +14,9 @@ function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
     m = similar(factors[fact])
 
     factor_portion = factors[1:end.!=fact]
-    for i = 1:dim(rank)
-        array(m)[i, :] = array(
-            als.target *
-            contract(map(x -> itensor(array(x)[i, :], ind(x, 2)), factor_portion)),
-        )
-    end
+    krp = had_contract(dag.(factor_portion), rank)
+    
+    m = krp * als.target
     return m
 end
 
@@ -34,13 +31,14 @@ function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
     m = similar(factors[fact])
 
     factor_portion = factors[1:end.!=fact]
-    for i = 1:dim(rank)
-        mtkrp = als.target
-        for ten in factor_portion
-            mtkrp = itensor(array(ten)[i, :], ind(ten, 2)) * mtkrp
-        end
-        array(m)[i, :] = data(mtkrp)
-    end
+    # for i = 1:dim(rank)
+    #     mtkrp = als.target
+    #     for ten in factor_portion
+    #         mtkrp = itensor(array(ten)[i, :], ind(ten, 2)) * mtkrp
+    #     end
+    #     array(m)[i, :] = data(mtkrp)
+    # end
+    m = had_contract([als.target, dag.(factor_portion)...], rank)
     return m
 end
 

@@ -47,7 +47,6 @@ function random_CPD(target::ITensorNetwork, rank::Index; rng = nothing)
     ## vertex and find the common/non-common inds.
     ## for every noncommonind push
     for v in verts
-        partial = target[v]
         for uniq in uniqueinds(target, v)
             factor = row_norm(random_itensor(rng, elt, rank, uniq), uniq)[1]
             push!(cp, factor)

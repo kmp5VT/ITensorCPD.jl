@@ -43,10 +43,7 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     check.iter += 1
     rank = ind(partial_gram[1], 1)
     inner_prod = 0
-    for R = 1:dim(rank)
-        inner_prod +=
-            sum(tensor(check.MttKRP)[R, :] .* (tensor(factors[end])[R, :] .* λ[R]))
-    end
+    inner_prod = sum( array(check.MttKRP) .* array(had_contract(dag(factors[end]), dag(λ), rank)))
     fact_square = norm_factors(partial_gram, λ)
     normResidual =
         sqrt(abs(check.ref_norm * check.ref_norm + fact_square - 2 * abs(inner_prod)))
@@ -86,7 +83,7 @@ function norm_factors(partial_gram::Vector, λ::ITensor)
     for i = 2:length(partial_gram)
         hadamard_product!(had, had, partial_gram[i])
     end
-    return (had*(λ*prime(λ)))[]
+    return (had*(λ*dag(prime(λ))))[]
 end
 
 fit(fit::FitCheck) = fit.final_fit

@@ -7,7 +7,7 @@ using ITensorNetworks: ITensorNetwork, vertices
 # with the CPD and the second are the set of vectors from the CPD which do not connect to the network.
 function tn_cp_contract(tn::ITensorNetwork, cp::CPD)
     tnp = copy(tn)
-    r = ind(cp[], 1)
+    r = cp_rank(cp)
     ## Go through all the nodes
     contracted_cps = Int[]
     for v in vertices(tnp)
