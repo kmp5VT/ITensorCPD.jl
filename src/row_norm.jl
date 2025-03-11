@@ -1,13 +1,15 @@
 using ITensors: ITensor
+
 function row_norm(t::ITensor, i...)
-    λ = t .^ 2
+    elt = eltype(t)
+    λ = t .^ elt(2)
     for is in tuple(i...)
-        λ = λ * delta(is)
+        λ = λ * delta(elt, is)
     end
     λ = sqrt.(λ)
     l_array = copy(λ)
     for is in tuple(i...)
-        l_array = l_array * delta(is)
+        l_array = l_array * delta(elt, is)
     end
     return itensor(
         array(t) ./ array(permute(l_array, inds(t); allow_alias = true)),

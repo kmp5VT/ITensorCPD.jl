@@ -30,7 +30,7 @@ function random_CPD(target::ITensor, rank::Index; rng = nothing)
     l = nothing
 
     for i in inds(target)
-        rtensor, l = row_norm(random_itensor(rng, elt, rank, i), i)
+        rtensor, l = row_norm(itensor(NDTensors.randomTensor(NDTensors.datatype(target.tensor), (rank, i)), rank, i), i)
         push!(cp, rtensor)
     end
     return CPD{ITensor}(cp, l)
