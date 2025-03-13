@@ -1,5 +1,7 @@
 using ITensors: ITensor, Index
 function had_contract(A::ITensor, B::ITensor, had::Index; α = true)
+    @assert NDTensors.datatype(A) == NDTensors.datatype(B)
+    dataT = NDTensors.datatype(A)
     if had ∉ commoninds(A, B)
         return α .* (A * B)
     else
@@ -11,7 +13,8 @@ function had_contract(A::ITensor, B::ITensor, had::Index; α = true)
         @assert length(slices_A) == length(slices_B)
         inds_c = noncommoninds(A, B)
         elt = promote_type(eltype(A), eltype(B))
-        C = ITensor(elt, vcat(had, inds_c...))
+        is = vcat(had, inds_c...)
+        C = ITensor(dataT(zeros(elt, dim(is))), is)
         ## Right now I have to fill C with zeros because empty tensor
         fill!(C, zero(elt))
         slices_C = eachslice(array(C); dims = 1)
@@ -46,12 +49,11 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
     positions_of_had = Dict(y => (findfirst(x -> x == had, inds(y))) for y in had_tensors)
     slices = [eachslice(array(x); dims = positions_of_had[x]) for x in had_tensors]
     slices_inds = [inds(x)[1:end.!=positions_of_had[x]] for x in had_tensors]
-    # inds_c = noncommoninds(A, B)
-    # C = ITensor(elt, vcat(had, inds_c...))
-    ## TODO could be a better way to contract these given a sequence?
+    
     cslice =
         α .* contract([itensor(slices[x][1], slices_inds[x]) for x = 1:length(had_tensors)])
-    # ## Right now I have to fill C with zeros because I hate empty tensor
+    
+        # ## Right now I have to fill C with zeros because I hate empty tensor
     C = ITensor(zeros(eltype(cslice), dim(had) * dim(cslice)), (had, inds(cslice)...))
     slices_c = eachslice(array(C); dims = 1)
     slices_c[1] .= cslice

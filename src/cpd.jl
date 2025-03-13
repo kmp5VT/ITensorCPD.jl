@@ -25,12 +25,12 @@ Base.eltype(cp::CPD) = return eltype(cp.λ)
 ## This makes a random CPD for a given ITensor
 function random_CPD(target::ITensor, rank::Index; rng = nothing)
     rng = isnothing(rng) ? MersenneTwister(3) : rng
-    elt = eltype(target)
     cp = Vector{ITensor}([])
     l = nothing
 
     for i in inds(target)
-        rtensor, l = row_norm(itensor(NDTensors.randomTensor(NDTensors.datatype(target.tensor), (rank, i)), rank, i), i)
+        it = itensor(NDTensors.randomTensor(NDTensors.datatype(target), (rank, i)))
+        rtensor, l = row_norm(it, i)
         push!(cp, rtensor)
     end
     return CPD{ITensor}(cp, l)
