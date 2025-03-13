@@ -24,9 +24,9 @@ function contract_loop(r1, tn, i, vs_centre)
     s2 = subgraph(tn, ring_inds(1, 5, 6))
 
 
-    fit = ITensorCPD.FitCheck(1e-4, 1000, norm_of_loop(s1))
-    cp_guess = ITensorCPD.random_CPD_ITensorNetwork(s1, r1)
-    cpopt = ITensorCPD.als_optimize(cp_guess, r1, fit)
+    check = ITensorCPD.FitCheck(1e-4, 1000, norm_of_loop(s1))
+    cp_guess = ITensorCPD.random_CPD(s1, r1)
+    cpopt = ITensorCPD.als_optimize(s1, cp_guess; check)
     outer, inner = ITensorCPD.tn_cp_contract(s2, cpopt)
     val = (itensor(
         array(ITensorCPD.had_contract(outer.data_graph.vertex_data.values, r1)) .*
@@ -79,12 +79,12 @@ include("refs_and_plots.jl")
 #########################################################################
 # plots
 using Plots
-plot(betas, theor[end:-1:1]; label = "Infinite Lattice", s = :solid)
+plot(betas, theor[end:-1:1] - full_szsz; label = "Infinite Lattice", s = :solid)
 plot!(betas, full_szsz; label = "Exact Contraction", s = :dash)
-plot!(betas, bp_szsz; label = "BP Contraction", s = :dot)
-plot!(betas, cp_szsz[1]; label = "CP rank 1", s = :auto)
-plot!(betas, cp_szsz[2]; label = "CP rank 6", s = :auto)
-plot!(betas, cp_szsz[3]; label = "CP rank 15", s = :auto)
+plot!(betas, bp_szsz - full_szsz; label = "BP Contraction", s = :dot)
+plot!(betas, cp_szsz[1] - full_szsz; label = "CP rank 1", s = :auto)
+plot!(betas, cp_szsz[2] - full_szsz; label = "CP rank 6", s = :auto)
+plot!(betas, cp_szsz[3] - full_szsz; label = "CP rank 15", s = :auto)
 @show plot!(;
     xlabel = "Inverse Temparature",
     ylabel = "SZ Correlation",
