@@ -82,12 +82,13 @@ include("./util.jl")
         sqrs = sqrs * sising[i] * sisingp[i]
     end
 
+
     check = ITensorCPD.FitCheck(1e-3, 6, sqrt(sqrs[]))
     cpopt = ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = true)
-    1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract(s1)) / norm(contract(s1))
+    #1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract([s1...])) / sqrs[]
     @test isapprox(
         check.final_fit,
-        1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract(s1)) / norm(contract(s1));
+        1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract([s1...])) / sqrs[],
         rtol = 1e-3,
     )
 end
