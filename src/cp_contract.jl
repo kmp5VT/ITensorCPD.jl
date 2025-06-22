@@ -15,7 +15,7 @@ function tn_cp_contract(tn::ITensorNetwork, cp::CPD)
         iss = uniqueinds(tnp, v)
         for is in iss
             cp_pos = findfirst(x -> x == is, ind.(cp.factors, 2))
-            #@show cp_pos
+
             isnothing(cp_pos) && continue
             tnp[v] = ITensorCPD.had_contract(cp[cp_pos], tnp[v], r)
             push!(contracted_cps, cp_pos)

@@ -6,6 +6,9 @@ end
 function reconstruct(factors::Vector{<:ITensor}, λ)
     facs = copy(factors)
     ## Scale the original tensor by the scaling factor lambda
+    ## TODO this doesn't actually work as I think it does, it makes a square matrix with repeated rows
+    ## then uses dispatch to do an elementwise multiplication. Should switch it with diagITensor code to 
+    ## make use of gemm.
     λ = λ * delta(ind(facs[1], 2))
     facs[1] = itensor(array(facs[1]) .* array(λ), inds(facs[1]))
 

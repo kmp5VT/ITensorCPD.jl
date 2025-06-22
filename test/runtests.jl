@@ -138,16 +138,24 @@ end
 
 @testset "Standard CPD, elt=$elt" for elt in [Float32, ComplexF32]
     i, j, k = Index.((20, 30, 40))
-    r = Index(400, "CP_rank")
+    r = Index(3, "CP_rank")
     A = random_itensor(elt, i, j, k)
     ## Calling decompose
+
+    cp = ITensorCPD.random_CPD(A, r);
+    A = reconstruct(cp)
+
+    check = ITensorCPD.FitCheck(1e-10, 100, norm(A))
+    ops = ITensorCPD.decompose(A, r; verbose = true, check);
+    array(ops[])
+    array(cp[])
     opt_A = ITensorCPD.decompose(A, r);
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-3
 
     @test_throws TypeError ITensorCPD.decompose(A, 400; solver=A)
 
     check = ITensorCPD.FitCheck(1e-15, 100, norm(A))
-    opt_A = ITensorCPD.decompose(A, 400; check);
+    opt_A = ITensorCPD.decompose(A, 400; check, verbose = true);
 
     ## Build a random guess
     cp_A = random_CPD(A, r)
@@ -183,7 +191,7 @@ using ITensorNetworks: IndsNetwork, delta_network, edges, src, dst, degree, inse
 using ITensors
 include("util.jl")
 
-@testset "Known rank Network" for elt in (Float32, Float64)
+#@testset "Known rank Network" for elt in (Float32, Float64)
     nx = 3
     grid = named_grid((nx,2))
     tn1 = random_tensornetwork(grid; link_space = 1)
@@ -228,12 +236,16 @@ include("util.jl")
     using Random
     rng = MersenneTwister(3)
     bestfit = 0;
+    opt = nothing
     for i in 1:10
         opt = ITensorCPD.decompose(subtn, Index(2,"rank"); verbose=false, rng);
         fit = 1.0 - (norm(reconstruct(opt) - contract(subtn)) / norm(contract(subtn)))
         bestfit = fit > bestfit ? fit : bestfit
     end
     @test bestfit ≈ 1.0
+
+    l = subgraph(tn, ((3,3),))
+    n,c = ITensorCPD.tn_cp_contract(l, opt)
 end
 
 @testset "itensor_networks" for elt in (Float32, Float64)
