@@ -49,11 +49,11 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
     positions_of_had = Dict(y => (findfirst(x -> x == had, inds(y))) for y in had_tensors)
     slices = [eachslice(array(x); dims = positions_of_had[x]) for x in had_tensors]
     slices_inds = [inds(x)[1:end.!=positions_of_had[x]] for x in had_tensors]
-    
+
     cslice =
         α .* contract([itensor(slices[x][1], slices_inds[x]) for x = 1:length(had_tensors)])
-    
-        # ## Right now I have to fill C with zeros because I hate empty tensor
+
+    # ## Right now I have to fill C with zeros because I hate empty tensor
     C = ITensor(zeros(eltype(cslice), dim(had) * dim(cslice)), (had, inds(cslice)...))
     slices_c = eachslice(array(C); dims = 1)
     slices_c[1] .= cslice

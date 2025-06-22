@@ -15,7 +15,7 @@ function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
 
     factor_portion = factors[1:end.!=fact]
     krp = had_contract(dag.(factor_portion), rank)
-    
+
     m = krp * als.target
     return m
 end

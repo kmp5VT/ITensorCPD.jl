@@ -40,7 +40,7 @@ include("./util.jl")
 #                           (3,4), (4,4),
 #                           (4,3), (4,2),
 #                           (3,2))) 
-                          
+
 #   s = subtn.data_graph.vertex_data.values
 #   sp = replace_inner_w_prime_loop(s)
 
@@ -63,33 +63,33 @@ include("./util.jl")
 # end
 
 @testset "itensor_networks" for elt in (Float32, Float64)
-  nx = 3
-  ny = 3
-  s = IndsNetwork(named_grid((nx, ny)); link_space = 2)
+    nx = 3
+    ny = 3
+    s = IndsNetwork(named_grid((nx, ny)); link_space = 2)
 
-  beta = 1
-  tn = ising_network(elt, s, beta)
+    beta = 1
+    tn = ising_network(elt, s, beta)
 
-  r = Index(10, "CP_rank")
-  s1 = subgraph(tn, ((1, 1), (1, 2), (1, 3), (2, 3), (3, 3), (3, 2), (3, 1), (2, 1)))
+    r = Index(10, "CP_rank")
+    s1 = subgraph(tn, ((1, 1), (1, 2), (1, 3), (2, 3), (3, 3), (3, 2), (3, 1), (2, 1)))
 
-  sising = s1.data_graph.vertex_data.values
-  ## TODO make this with ITensorNetworks
-  sisingp = replace_inner_w_prime_loop(sising)
+    sising = s1.data_graph.vertex_data.values
+    ## TODO make this with ITensorNetworks
+    sisingp = replace_inner_w_prime_loop(sising)
 
-  sqrs = sising[1] * sisingp[1]
-  for i = 2:length(sising)
-      sqrs = sqrs * sising[i] * sisingp[i]
-  end
+    sqrs = sising[1] * sisingp[1]
+    for i = 2:length(sising)
+        sqrs = sqrs * sising[i] * sisingp[i]
+    end
 
-  check = ITensorCPD.FitCheck(1e-3, 6, sqrt(sqrs[]))
-  cpopt = ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = true)
-  1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract(s1)) / norm(contract(s1))
-  @test isapprox(
-      check.final_fit,
-      1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract(s1)) / norm(contract(s1));
-      rtol = 1e-3,
-  )
+    check = ITensorCPD.FitCheck(1e-3, 6, sqrt(sqrs[]))
+    cpopt = ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = true)
+    1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract(s1)) / norm(contract(s1))
+    @test isapprox(
+        check.final_fit,
+        1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract(s1)) / norm(contract(s1));
+        rtol = 1e-3,
+    )
 end
 
 # TODO this is still broken so open an issue about complex tensor networks. Single tensors are able to be complex.

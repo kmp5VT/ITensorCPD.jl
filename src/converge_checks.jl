@@ -43,7 +43,8 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     check.iter += 1
     rank = ind(partial_gram[1], 1)
     inner_prod = 0
-    inner_prod = sum( array(check.MttKRP) .* array(had_contract(dag(factors[end]), dag(λ), rank)))
+    inner_prod =
+        sum(array(check.MttKRP) .* array(had_contract(dag(factors[end]), dag(λ), rank)))
     fact_square = norm_factors(partial_gram, λ)
     normResidual =
         sqrt(abs(check.ref_norm * check.ref_norm + fact_square - 2 * abs(inner_prod)))

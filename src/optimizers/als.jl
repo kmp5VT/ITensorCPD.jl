@@ -2,26 +2,39 @@ using LinearAlgebra: ColumnNorm, diagm
 abstract type CPDOptimizer end
 
 struct ALS <: CPDOptimizer
-    target
+    target::Any
     mttkrp_alg::MttkrpAlgorithm
     additional_items::Dict
     check::ConvergeAlg
 end
 
-function als_optimize(target::ITensor, cp::CPD{<:ITensor}; alg=nothing, check=nothing, maxiter=nothing, verbose=false)
+function als_optimize(
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    alg = nothing,
+    check = nothing,
+    maxiter = nothing,
+    verbose = false,
+)
     alg = isnothing(alg) ? direct() : alg
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
     return optimize(cp, ALS(target, alg, Dict(), check); verbose)
 end
 
-function als_optimize(target::ITensorNetwork, cp::CPD{<:ITensorNetwork}; alg=nothing, 
-    check=nothing, maxiter=nothing, verbose=false)
+function als_optimize(
+    target::ITensorNetwork,
+    cp::CPD{<:ITensorNetwork};
+    alg = nothing,
+    check = nothing,
+    maxiter = nothing,
+    verbose = false,
+)
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
     alg = isnothing(alg) ? network_solver() : alg
     verts = vertices(target)
     elt = eltype(target[first(verts)])
     cpRank = cp_rank(cp)
-    
+
     partial_mtkrp = typeof(similar(cp.factors))()
     external_ind_to_vertex = Dict()
     extern_ind_to_factor = Dict()
@@ -47,20 +60,21 @@ function als_optimize(target::ITensorNetwork, cp::CPD{<:ITensorNetwork}; alg=not
         partial_cont_number += 1
     end
 
-    als = ALS(target, 
-    alg,
-    Dict(
-        :partial_mtkrp => partial_mtkrp,
-        :ext_ind_to_vertex => external_ind_to_vertex,
-        :ext_ind_to_factor => extern_ind_to_factor,
-        :factor_to_part_cont => factor_number_to_partial_cont_number,
+    als = ALS(
+        target,
+        alg,
+        Dict(
+            :partial_mtkrp => partial_mtkrp,
+            :ext_ind_to_vertex => external_ind_to_vertex,
+            :ext_ind_to_factor => extern_ind_to_factor,
+            :factor_to_part_cont => factor_number_to_partial_cont_number,
         ),
-        check
-        )
+        check,
+    )
     optimize(cp, als; verbose)
 end
 
-function optimize(cp::CPD, als::ALS; verbose=true)
+function optimize(cp::CPD, als::ALS; verbose = true)
     rank = cp_rank(cp)
     iter = 0
     part_grammian = cp.factors .* dag.(prime.(cp.factors; tags = tags(rank)))
@@ -73,7 +87,7 @@ function optimize(cp::CPD, als::ALS; verbose=true)
         for fact = 1:num_factors
             ## compute the matrized tensor time khatri rao product with a provided algorithm.
             mtkrp = mttkrp(als.mttkrp_alg, als, factors, cp, rank, fact)
-            
+
             ## compute the grammian which requires the hadamard product
             grammian = similar(part_grammian[1])
             fill!(grammian, one(eltype(cp)))
@@ -90,7 +104,8 @@ function optimize(cp::CPD, als::ALS; verbose=true)
                 itensor(qr(array(dag(grammian)), ColumnNorm()) \ array(mtkrp), inds(mtkrp)),
                 ind(mtkrp, 2),
             )
-            part_grammian[fact] = factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
+            part_grammian[fact] =
+                factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
 
             post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
         end
