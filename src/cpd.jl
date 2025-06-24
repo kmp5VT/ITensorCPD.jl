@@ -17,7 +17,7 @@ Base.getindex(cp::CPD) = cp.λ
 cp_rank(cp::CPD) = ind(cp[], 1)
 
 function Base.copy(cp::CPD)
-    return CPD(cp.target, copy(cp.factors), copy(cp.λ))
+    return CPD(copy(cp.factors), copy(cp.λ))
 end
 
 Base.eltype(cp::CPD) = return eltype(cp.λ)
