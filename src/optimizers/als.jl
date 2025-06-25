@@ -17,8 +17,24 @@ function als_optimize(
     verbose = false,
 )
     alg = isnothing(alg) ? direct() : alg
+    extra_args = Dict();
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
-    return optimize(cp, ALS(target, alg, Dict(), check); verbose)
+    if alg isa TargetDecomp
+        decomps = Vector{ITensor}()
+        targets = Vector{ITensor}()
+        for i in inds(target)
+            _,_,v = svd(target, i; use_relative_cutoff=false, cutoff = 0)
+            push!(decomps, v)
+            t = v * target
+            push!(targets, t);
+        end
+        extra_args[:target_decomps] = decomps
+        extra_args[:target_transform] = targets
+
+        #return ALS(target, alg, extra_args, check);
+        return optimize(cp, ALS(target, alg, extra_args, check); verbose)
+    end
+    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
 function als_optimize(
@@ -108,6 +124,9 @@ function optimize(cp::CPD, als::ALS; verbose = true)
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
 
             post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
+
+            Tappx = reconstruct(factors, λ)
+            @show norm(als.target - Tappx) / norm(als.target)
         end
 
         # potentially save the MTTKRP for the loss function
@@ -117,6 +136,75 @@ function optimize(cp::CPD, als::ALS; verbose = true)
         if check_converge(converge, factors, λ, part_grammian; verbose)
             break
         end
+        iter += 1
+    end
+
+    return CPD{typeof(als.target)}(factors, λ)
+end
+
+function optimize_svd(cp::CPD, als::ALS; verbose = true)
+    rank = cp_rank(cp)
+    iter = 0
+    part_grammian = cp.factors .* dag.(prime.(cp.factors; tags = tags(rank)))
+    num_factors = length(cp.factors)
+    λ = copy(cp.λ)
+    factors = copy(cp.factors)
+    converge = als.check
+    while iter < converge.max_counter
+        mtkrp = nothing
+        for fact = 1:1
+            ## compute the matrized tensor time khatri rao product with a provided algorithm.
+            mtkrp = mttkrp(als.mttkrp_alg, als, factors, cp, rank, fact)
+
+            ## compute the grammian which requires the hadamard product
+            grammian = similar(part_grammian[1])
+            fill!(grammian, one(eltype(cp)))
+            for i = 1:num_factors
+                if i == fact
+                    continue
+                end
+                grammian = hadamard_product(grammian, part_grammian[i])
+            end
+
+            ## potentially better to first inverse the grammian then contract
+            ## qr(A, Val(true))
+            f = itensor(qr(array(dag(grammian)), ColumnNorm()) \ array(mtkrp), inds(mtkrp))
+        
+            @show f
+            # target_ind = ind(cp[fact], 2)
+            # ### Trying to solve T V = I [(J x K) V] 
+            # #### This is the first KRP * Singular values of T: [(J x K) V]  
+            # factor_portion = factors[1:end.!=fact]
+            # krp_times_sing_vec = had_contract([als.additional_items[:target_decomps][fact], dag.(factor_portion)...], rank)
+            
+
+            # ##### Now contract TV by the inverse of KRP * SVD
+            # @show inds(krp_times_sing_vec)
+            # @show inds(als.additional_items[:target_transform][fact])
+            # direction = array(krp_times_sing_vec)' \ array(als.additional_items[:target_transform][fact])'
+            # @show size(direction)
+
+            # direction = itensor(direction', rank, target_ind)
+            # A = direction
+            # factors[fact], λ = row_norm(
+            #     A,
+            #     target_ind,
+            # )
+ 
+            # @show lam
+            # @show λ
+        end
+
+        println(norm(als.target - reconstruct(factors, λ)) / norm(als.target))
+        
+
+        # potentially save the MTTKRP for the loss function
+
+        # save_mttkrp(converge, mtkrp)
+
+        # if check_converge(converge, factors, λ, part_grammian; verbose)
+        #     break
+        # end
         iter += 1
     end
 

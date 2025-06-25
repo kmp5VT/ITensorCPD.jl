@@ -44,6 +44,28 @@ end
 
 function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) end
 
+
+################
+## This solver is an experimental solver 
+## Which takes the SVD of each mode of the 
+## tensor in the long direction and solves the problem
+## T_i V_i = A [(B x C) V_i] where T_i is the tensor T 
+## Matricized along the ith mode and V_i matrix from 
+## the SVD of the matricized T_i
+
+struct TargetDecomp <: MttkrpAlgorithm end
+
+function mttkrp(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
+    m = similar(factors[fact])
+
+    factor_portion = factors[1:end.!=fact]
+    m = had_contract([als.additional_items[:target_decomps][fact], dag.(factor_portion)...], rank)
+    m = m * als.additional_items[:target_transform][fact]
+    return m
+end
+
+function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
+
 ################
 ## This solver is based on ITensorNetwork
 ## It allows one to take a completely connected 
