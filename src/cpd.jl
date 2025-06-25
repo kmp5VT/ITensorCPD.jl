@@ -36,6 +36,10 @@ function random_CPD(target::ITensor, rank::Index; rng = nothing)
     return CPD{ITensor}(cp, l)
 end
 
+function random_CPD(target, rank::Int; rng = nothing)
+    random_CPD(target, Index(rank, "CPD"); rng)
+end
+
 using ITensorNetworks: ITensorNetwork, nv, vertices
 function random_CPD(target::ITensorNetwork, rank::Index; rng = nothing)
     rng = isnothing(rng) ? MersenneTwister(3) : rng
