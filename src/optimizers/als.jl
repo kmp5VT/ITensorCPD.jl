@@ -32,7 +32,7 @@ function als_optimize(
         extra_args[:target_transform] = targets
 
         #return ALS(target, alg, extra_args, check);
-        return optimize(cp, ALS(target, alg, extra_args, check); verbose)
+        return optimize_svd(cp, ALS(target, alg, extra_args, check); verbose)
     end
     return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
@@ -150,52 +150,27 @@ function optimize_svd(cp::CPD, als::ALS; verbose = true)
     λ = copy(cp.λ)
     factors = copy(cp.factors)
     converge = als.check
+    target_inds = inds(als.target)
     while iter < converge.max_counter
         mtkrp = nothing
-        for fact = 1:1
-            ## compute the matrized tensor time khatri rao product with a provided algorithm.
-            mtkrp = mttkrp(als.mttkrp_alg, als, factors, cp, rank, fact)
-
-            ## compute the grammian which requires the hadamard product
-            grammian = similar(part_grammian[1])
-            fill!(grammian, one(eltype(cp)))
-            for i = 1:num_factors
-                if i == fact
-                    continue
-                end
-                grammian = hadamard_product(grammian, part_grammian[i])
-            end
-
-            ## potentially better to first inverse the grammian then contract
-            ## qr(A, Val(true))
-            f = itensor(qr(array(dag(grammian)), ColumnNorm()) \ array(mtkrp), inds(mtkrp))
-        
-            @show f
-            # target_ind = ind(cp[fact], 2)
+        for fact = 1:num_factors
+            target_ind = target_inds[fact]
             # ### Trying to solve T V = I [(J x K) V] 
             # #### This is the first KRP * Singular values of T: [(J x K) V]  
-            # factor_portion = factors[1:end.!=fact]
-            # krp_times_sing_vec = had_contract([als.additional_items[:target_decomps][fact], dag.(factor_portion)...], rank)
+            factor_portion = factors[1:end.!=fact]
+            krp_times_sing_vec = had_contract([als.additional_items[:target_decomps][fact], dag.(factor_portion)...], rank)
             
 
             # ##### Now contract TV by the inverse of KRP * SVD
-            # @show inds(krp_times_sing_vec)
-            # @show inds(als.additional_items[:target_transform][fact])
-            # direction = array(krp_times_sing_vec)' \ array(als.additional_items[:target_transform][fact])'
-            # @show size(direction)
+            direction = itensor(array(als.additional_items[:target_transform][fact]) \ array(krp_times_sing_vec)', rank, target_ind)
 
-            # direction = itensor(direction', rank, target_ind)
-            # A = direction
-            # factors[fact], λ = row_norm(
-            #     A,
-            #     target_ind,
-            # )
- 
-            # @show lam
-            # @show λ
+            factors[fact], λ = row_norm(
+                direction,
+                target_ind,
+            )
+
+            println(norm(als.target - reconstruct(factors, λ)) / norm(als.target))
         end
-
-        println(norm(als.target - reconstruct(factors, λ)) / norm(als.target))
         
 
         # potentially save the MTTKRP for the loss function
