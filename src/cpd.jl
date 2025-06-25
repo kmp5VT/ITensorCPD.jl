@@ -15,11 +15,8 @@ Base.getindex(cp::CPD, i) = cp.factors[i]
 Base.getindex(cp::CPD) = cp.λ
 
 function Base.isequal(cp1::CPD, cp2::CPD) 
-    cp1.factors == cp2.factors
-    cp1.λ == cp2.λ
+    cp1.factors == cp2.factors && cp1.λ == cp2.λ
 end
-
-Base.==(cp1::CPD, cp2::CPD) = Base.isequal(cp1, cp2)
 
 cp_rank(cp::CPD) = ind(cp[], 1)
 
