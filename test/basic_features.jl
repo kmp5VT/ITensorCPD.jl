@@ -91,9 +91,10 @@ end
     @test 1.0 - norm(array(exact - recon)) / norm(exact) ≈ 1.0 rtol = eps(real(elt))
 end
 
+using ITensors: random_itensor
 @testset "Low level features" begin
     i,j,k = Index.((5,5,5))
-    T = randomITensor(Float64, i,j,k)
+    T = random_itensor(Float64, i,j,k)
     r = Index(5, "CPD")
     cp1 = random_CPD(T, r)
 
