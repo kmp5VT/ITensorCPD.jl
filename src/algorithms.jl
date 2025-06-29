@@ -14,7 +14,8 @@ function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
     m = similar(factors[fact])
 
     factor_portion = factors[1:end.!=fact]
-    krp = had_contract(dag.(factor_portion), rank)
+    sequence = ITensors.default_sequence()
+    krp = had_contract(dag.(factor_portion), rank; sequence)
 
     m = krp * als.target
     return m
@@ -31,14 +32,10 @@ function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
     m = similar(factors[fact])
 
     factor_portion = factors[1:end.!=fact]
-    # for i = 1:dim(rank)
-    #     mtkrp = als.target
-    #     for ten in factor_portion
-    #         mtkrp = itensor(array(ten)[i, :], ind(ten, 2)) * mtkrp
-    #     end
-    #     array(m)[i, :] = data(mtkrp)
-    # end
-    m = had_contract([als.target, dag.(factor_portion)...], rank)
+    if isnothing(als.additional_items[:mttkrp_contract_sequences][fact])
+        als.additional_items[:mttkrp_contract_sequences][fact] = optimal_had_contraction_sequence([als.target, dag.(factor_portion)...], rank)
+    end
+    m = had_contract([als.target, dag.(factor_portion)...], rank; sequence = als.additional_items[:mttkrp_contract_sequences][fact])
     return m
 end
 
@@ -63,7 +60,6 @@ function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
         if x == target_index
             continue
         end
-        # p = had_contract(factors[cp.additional_items[:ext_ind_to_factor][x]], p)
         factor_ind = als.additional_items[:ext_ind_to_factor][x]
         p = had_contract(factors[factor_ind], p, rank)
     end
@@ -73,9 +69,6 @@ function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
         (als.additional_items[:partial_mtkrp])[1:end.!=als.additional_items[:factor_to_part_cont][fact]]...,
     ]
     p = had_contract([p, env_list...], rank)
-    # for x in env_list
-    #   p = had_contract(x, p, rank)
-    # end
     return p
 end
 

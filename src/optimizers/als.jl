@@ -18,7 +18,13 @@ function als_optimize(
 )
     alg = isnothing(alg) ? direct() : alg
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
-    return optimize(cp, ALS(target, alg, Dict(), check); verbose)
+    mttkrp_contract_sequences = Vector{Union{Any, Nothing}}()
+    for l in inds(target)
+        push!(mttkrp_contract_sequences, nothing)
+    end
+    return optimize(cp, ALS(target, alg, Dict(
+        :mttkrp_contract_sequences => mttkrp_contract_sequences
+    ), check); verbose)
 end
 
 function als_optimize(
