@@ -1,4 +1,6 @@
 using ITensors: ITensor, Index
+using TensorOperations
+
 function had_contract(A::ITensor, B::ITensor, had::Index; α = true)
     @assert NDTensors.datatype(A) == NDTensors.datatype(B)
     dataT = NDTensors.datatype(A)
