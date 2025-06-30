@@ -2,6 +2,8 @@ using ITensors: Index
 using ITensors.NDTensors: data
 
 abstract type MttkrpAlgorithm end
+abstract type ProjectionAlgorithm end
+
 struct KRP <: MttkrpAlgorithm end
 
 ## This version assumes we have the exact target and can form the tensor
@@ -50,15 +52,18 @@ function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) 
 ## Matricized along the ith mode and V_i matrix from 
 ## the SVD of the matricized T_i
 
-struct TargetDecomp <: MttkrpAlgorithm end
+struct InvKRP <: ProjectionAlgorithm end
 
-function mttkrp(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
-    m = similar(factors[fact])
+struct TargetDecomp <: ProjectionAlgorithm end
 
-    factor_portion = factors[1:end.!=fact]
-    m = had_contract([als.additional_items[:target_decomps][fact], dag.(factor_portion)...], rank)
-    m = m * als.additional_items[:target_transform][fact]
-    return m
+function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
+    return had_contract(factors, rank)
+end
+
+function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+function project_krp(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
+    return had_contract([als.additional_items[:target_decomps], factors...], rank)
 end
 
 function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
