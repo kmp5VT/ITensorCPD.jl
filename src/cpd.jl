@@ -14,6 +14,10 @@ factors(cp::CPD) = getproperty(cp, :factors)
 Base.getindex(cp::CPD, i) = cp.factors[i]
 Base.getindex(cp::CPD) = cp.λ
 
+function Base.isequal(cp1::CPD, cp2::CPD) 
+    cp1.factors == cp2.factors && cp1.λ == cp2.λ
+end
+
 cp_rank(cp::CPD) = ind(cp[], 1)
 
 function Base.copy(cp::CPD{T}) where T

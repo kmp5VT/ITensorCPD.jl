@@ -19,6 +19,11 @@ function als_optimize(
     alg = isnothing(alg) ? direct() : alg
     extra_args = Dict();
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
+    mttkrp_contract_sequences = Vector{Union{Any, Nothing}}()
+    for l in inds(target)
+        push!(mttkrp_contract_sequences, nothing)
+    end
+    extra_args[:mttkrp_contract_sequences] = mttkrp_contract_sequences
     if alg isa TargetDecomp
         decomps = Vector{ITensor}()
         targets = Vector{ITensor}()
