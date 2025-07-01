@@ -12,8 +12,6 @@ struct KRP <: MttkrpAlgorithm end
 ## order $d - 1$ where d is the number of modes in the target tensor.
 ## This process could be distributed.
 function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
-    ## form the tensor which will be written
-    m = similar(factors[fact])
 
     factor_portion = factors[1:end.!=fact]
     sequence = ITensors.default_sequence()
@@ -31,8 +29,6 @@ struct direct <: MttkrpAlgorithm end
 ## contracting the factor matrices into the tensor for each value of r
 ## This process could be distributed.
 function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
-    m = similar(factors[fact])
-
     factor_portion = factors[1:end.!=fact]
     if isnothing(als.additional_items[:mttkrp_contract_sequences][fact])
         als.additional_items[:mttkrp_contract_sequences][fact] = optimal_had_contraction_sequence([als.target, dag.(factor_portion)...], rank)
@@ -46,8 +42,6 @@ function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) 
 struct TargetDecomp <: MttkrpAlgorithm end
 
 function mttkrp(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
-    m = similar(factors[fact])
-
     factor_portion = factors[1:end.!=fact]
     m = had_contract([als.additional_items[:target_transform][fact], als.additional_items[:target_decomps][fact], dag.(factor_portion)...], rank;)
 
@@ -56,10 +50,24 @@ end
 
 function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
+
+struct InterpolateTarget{N} <: MttkrpAlgorithm 
+end
+
+InterpolateTarget() = InterpolateTarget{0}()
+InterpolateTarget(n) = InterpolateTarget{n}()
+
+Base.ndims(::InterpolateTarget{N}) where N = N
+
+function mttkrp(::InterpolateTarget, als, factors, cp, rank::Index, fact::Int)
+    factor_portion = factors[1:end.!=fact]
+    proj = als.target * als.additional_items[:target_transform][fact]
+    m = had_contract([als.additional_items[:target_transform][fact], dag.(factor_portion)...], rank;) * proj
+
     return m
 end
 
-function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
+function post_solve(::InterpolateTarget, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 ################
 ## This solver is an experimental solver 

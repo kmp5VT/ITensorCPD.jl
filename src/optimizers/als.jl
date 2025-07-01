@@ -69,6 +69,35 @@ function als_optimize(
 end
 
 function als_optimize(
+    alg::InterpolateTarget,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing, 
+    verbose = false,
+)
+    projectors = Vector{Vector{Int}}()
+    targets = Vector{ITensor}()
+    for i in inds(target)
+        Ris = uniqueinds(target, i)
+        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
+        _,_,p = qr(Tmat, ColumnNorm())
+        push!(projectors, p)
+        ndim = iszero(ndims(alg)) ? dim(Ris) : ndims(alg);
+        t = zeros(eltype(Tmat), (dim(Ris), ndim))
+        for i in 1:ndim
+            t[p[i], i] = 1
+        end
+        push!(targets, itensor(t, Ris, Index(ndim, "pivot")));
+    end
+    extra_args[:target_projects] = projectors
+    extra_args[:target_transform] = targets
+
+    # return ALS(target, alg, extra_args, check)
+    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
+end
+
+function als_optimize(
     target::ITensorNetwork,
     cp::CPD{<:ITensorNetwork};
     alg = nothing,
