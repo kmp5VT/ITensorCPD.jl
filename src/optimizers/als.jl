@@ -57,15 +57,15 @@ function als_optimize(
     decomps = Vector{ITensor}()
     targets = Vector{ITensor}()
     for i in inds(target)
-        _,_,v = svd(target, i; use_relative_cutoff=false, cutoff = 0)
+        u,s,v = svd(target, i; use_relative_cutoff=false, cutoff = 0)
         push!(decomps, v)
-        t = v * target
+        t = u * s
         push!(targets, t);
     end
     extra_args[:target_decomps] = decomps
     extra_args[:target_transform] = targets
 
-    return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
+    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
 function als_optimize(
@@ -191,7 +191,7 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
             factor_portion = factors[1:end.!=fact]
             projected_KRP = project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
             
-            mtkrp = projected_KRP *  als.target;
+            mtkrp = projected_KRP *  als.additional_items[:target_transform][fact];
             # ##### Now contract TV by the inverse of KRP * SVD
             U,S,V = svd(projected_KRP, rank; use_absolute_cutoff = true, cutoff = 0)
             direction = U * (als.additional_items[:target_transform][fact] * V * (1 ./ S))

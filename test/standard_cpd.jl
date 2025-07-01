@@ -35,6 +35,9 @@
 
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check)
     @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
+
+    svd_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.TargetDecomp(), check)
+    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(svd_opt_A)) / norm(ITensorCPD.reconstruct(opt_A)) < 1e-5
 end
 
 @testset "Standard CPD, elt=$elt" for elt in [Float32, ComplexF32]
