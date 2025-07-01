@@ -84,6 +84,7 @@ function als_optimize(
         _,_,p = qr(Tmat, ColumnNorm())
         push!(projectors, p)
         ndim = iszero(ndims(alg)) ? dim(Ris) : ndims(alg);
+        ndim = dim(Ris) < ndim ? dim(Ris) : ndim
         t = zeros(eltype(Tmat), (dim(Ris), ndim))
         for i in 1:ndim
             t[p[i], i] = 1
