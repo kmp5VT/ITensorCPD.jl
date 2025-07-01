@@ -46,17 +46,20 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
         end
         push!(had_tensors, ten)
     end
-    
+
     positions_of_had = Dict(y => (findfirst(x -> x == had, inds(y))) for y in had_tensors)
     slices = [eachslice(array(x); dims = positions_of_had[x]) for x in had_tensors]
-    slices_inds = [inds(x)[1:end.!=positions_of_had[x]] for x in had_tensors]
+    slices_inds = [inds(x)[1:end .!= positions_of_had[x]] for x in had_tensors]
 
-    slice_0 = [[itensor(slices[x][1], slices_inds[x]) for x = 1:length(had_tensors)]..., no_had...]
+    slice_0 = [
+        [itensor(slices[x][1], slices_inds[x]) for x = 1:length(had_tensors)]...,
+        no_had...,
+    ]
 
-    sequence = isnothing(sequence) ? ITensors.optimal_contraction_sequence(slice_0) : sequence
+    sequence =
+        isnothing(sequence) ? ITensors.optimal_contraction_sequence(slice_0) : sequence
 
-    cslice =
-        α .* contract(slice_0; sequence)
+    cslice = α .* contract(slice_0; sequence)
 
     # ## Right now I have to fill C with zeros because I hate empty tensor
     C = ITensor(zeros(eltype(cslice), dim(had) * dim(cslice)), (had, inds(cslice)...))
@@ -66,9 +69,15 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
     ## TODO would be better to do in place but can't do a list of tensors in place right now
     for i = 2:dim(had)
         slices_c[i] .= array(
-            α .* contract([[
-                itensor(slices[x][i], slices_inds[x]) for x = 1:length(had_tensors)
-            ]..., no_had...]; sequence),
+            α .* contract(
+                [
+                    [
+                        itensor(slices[x][i], slices_inds[x]) for x = 1:length(had_tensors)
+                    ]...,
+                    no_had...,
+                ];
+                sequence,
+            ),
         )
     end
 
@@ -87,12 +96,15 @@ function optimal_had_contraction_sequence(tensors::Vector{<:ITensor}, had::Index
         end
         push!(had_tensors, ten)
     end
-    
+
     positions_of_had = Dict(y => (findfirst(x -> x == had, inds(y))) for y in had_tensors)
     slices = [eachslice(array(x); dims = positions_of_had[x]) for x in had_tensors]
-    slices_inds = [inds(x)[1:end.!=positions_of_had[x]] for x in had_tensors]
+    slices_inds = [inds(x)[1:end .!= positions_of_had[x]] for x in had_tensors]
 
-    slice_0 = [[itensor(slices[x][1], slices_inds[x]) for x = 1:length(had_tensors)]..., no_had...]
+    slice_0 = [
+        [itensor(slices[x][1], slices_inds[x]) for x = 1:length(had_tensors)]...,
+        no_had...,
+    ]
 
     return ITensors.optimal_contraction_sequence(slice_0)
 end

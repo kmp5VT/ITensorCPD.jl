@@ -3,7 +3,7 @@ abstract type CPDOptimizer end
 
 struct ALS <: CPDOptimizer
     target::Any
-    mttkrp_alg::Union{MttkrpAlgorithm, ProjectionAlgorithm}
+    mttkrp_alg::Union{MttkrpAlgorithm,ProjectionAlgorithm}
     additional_items::Dict
     check::ConvergeAlg
 end
@@ -19,7 +19,7 @@ function als_optimize(
     alg = isnothing(alg) ? direct() : alg
     extra_args = Dict();
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
-    mttkrp_contract_sequences = Vector{Union{Any, Nothing}}()
+    mttkrp_contract_sequences = Vector{Union{Any,Nothing}}()
     for l in inds(target)
         push!(mttkrp_contract_sequences, nothing)
     end
@@ -27,20 +27,24 @@ function als_optimize(
     als_optimize(alg, target, cp; extra_args, check, verbose)
 end
 
-function als_optimize(alg::MttkrpAlgorithm, 
-target::ITensor, cp::CPD{<:ITensor}; 
-extra_args = Dict(),
-check = nothing, 
-verbose = false,
+function als_optimize(
+    alg::MttkrpAlgorithm,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    verbose = false,
 )
     return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
-function als_optimize(alg::InvKRP,
-target::ITensor, cp::CPD{<:ITensor}; 
-extra_args = Dict(),
-check = nothing, 
-verbose = false,
+function als_optimize(
+    alg::InvKRP,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    verbose = false,
 )
     extra_args[:target_transform] = [target for i in inds(target)]
     return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
@@ -51,13 +55,13 @@ function als_optimize(
     target::ITensor,
     cp::CPD{<:ITensor};
     extra_args = Dict(),
-    check = nothing, 
+    check = nothing,
     verbose = false,
 )
     decomps = Vector{ITensor}()
     targets = Vector{ITensor}()
     for i in inds(target)
-        u,s,v = svd(target, i; use_relative_cutoff=false, cutoff = 0)
+        u, s, v = svd(target, i; use_relative_cutoff = false, cutoff = 0)
         push!(decomps, v)
         t = u * s
         push!(targets, t);
@@ -73,7 +77,7 @@ function als_optimize(
     target::ITensor,
     cp::CPD{<:ITensor};
     extra_args = Dict(),
-    check = nothing, 
+    check = nothing,
     verbose = false,
 )
     projectors = Vector{Vector{Int}}()
@@ -81,12 +85,12 @@ function als_optimize(
     for i in inds(target)
         Ris = uniqueinds(target, i)
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
-        _,_,p = qr(Tmat, ColumnNorm())
+        _, _, p = qr(Tmat, ColumnNorm())
         push!(projectors, p)
         ndim = iszero(ndims(alg)) ? dim(Ris) : ndims(alg);
         ndim = dim(Ris) < ndim ? dim(Ris) : ndim
         t = zeros(eltype(Tmat), (dim(Ris), ndim))
-        for i in 1:ndim
+        for i = 1:ndim
             t[p[i], i] = 1
         end
         push!(targets, itensor(t, Ris, Index(ndim, "pivot")));
@@ -211,30 +215,27 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
 
     converge = als.check
     target_inds = inds(als.target)
-    
+
     while iter < converge.max_counter
         mtkrp = nothing
         for fact = 1:num_factors
             target_ind = target_inds[fact]
             # ### Trying to solve T V = I [(J x K) V] 
             # #### This is the first KRP * Singular values of T: [(J x K) V]  
-            factor_portion = factors[1:end.!=fact]
+            factor_portion = factors[1:end .!= fact]
             projected_KRP = project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
-            
-            mtkrp = projected_KRP *  als.additional_items[:target_transform][fact];
+
+            mtkrp = projected_KRP * als.additional_items[:target_transform][fact];
             # ##### Now contract TV by the inverse of KRP * SVD
-            U,S,V = svd(projected_KRP, rank; use_absolute_cutoff = true, cutoff = 0)
+            U, S, V = svd(projected_KRP, rank; use_absolute_cutoff = true, cutoff = 0)
             direction = U * (als.additional_items[:target_transform][fact] * V * (1 ./ S))
 
-            factors[fact], λ = row_norm(
-                direction,
-                target_ind,
-            )
+            factors[fact], λ = row_norm(direction, target_ind)
 
             part_grammian[fact] =
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
         end
-        
+
 
         # potentially save the MTTKRP for the loss function
 

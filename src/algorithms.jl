@@ -13,7 +13,7 @@ struct KRP <: MttkrpAlgorithm end
 ## This process could be distributed.
 function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
 
-    factor_portion = factors[1:end.!=fact]
+    factor_portion = factors[1:end .!= fact]
     sequence = ITensors.default_sequence()
     krp = had_contract(dag.(factor_portion), rank; sequence)
 
@@ -29,11 +29,16 @@ struct direct <: MttkrpAlgorithm end
 ## contracting the factor matrices into the tensor for each value of r
 ## This process could be distributed.
 function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
-    factor_portion = factors[1:end.!=fact]
+    factor_portion = factors[1:end .!= fact]
     if isnothing(als.additional_items[:mttkrp_contract_sequences][fact])
-        als.additional_items[:mttkrp_contract_sequences][fact] = optimal_had_contraction_sequence([als.target, dag.(factor_portion)...], rank)
+        als.additional_items[:mttkrp_contract_sequences][fact] =
+            optimal_had_contraction_sequence([als.target, dag.(factor_portion)...], rank)
     end
-    m = had_contract([als.target, dag.(factor_portion)...], rank; sequence = als.additional_items[:mttkrp_contract_sequences][fact])
+    m = had_contract(
+        [als.target, dag.(factor_portion)...],
+        rank;
+        sequence = als.additional_items[:mttkrp_contract_sequences][fact],
+    )
     return m
 end
 
@@ -42,8 +47,15 @@ function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) 
 struct TargetDecomp <: MttkrpAlgorithm end
 
 function mttkrp(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
-    factor_portion = factors[1:end.!=fact]
-    m = had_contract([als.additional_items[:target_transform][fact], als.additional_items[:target_decomps][fact], dag.(factor_portion)...], rank;)
+    factor_portion = factors[1:end .!= fact]
+    m = had_contract(
+        [
+            als.additional_items[:target_transform][fact],
+            als.additional_items[:target_decomps][fact],
+            dag.(factor_portion)...,
+        ],
+        rank;
+    )
 
     return m
 end
@@ -51,18 +63,21 @@ end
 function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 
-struct InterpolateTarget{N} <: MttkrpAlgorithm 
-end
+struct InterpolateTarget{N} <: MttkrpAlgorithm end
 
 InterpolateTarget() = InterpolateTarget{0}()
 InterpolateTarget(n) = InterpolateTarget{n}()
 
-Base.ndims(::InterpolateTarget{N}) where N = N
+Base.ndims(::InterpolateTarget{N}) where {N} = N
 
 function mttkrp(::InterpolateTarget, als, factors, cp, rank::Index, fact::Int)
-    factor_portion = factors[1:end.!=fact]
+    factor_portion = factors[1:end .!= fact]
     proj = als.target * als.additional_items[:target_transform][fact]
-    m = had_contract([als.additional_items[:target_transform][fact], dag.(factor_portion)...], rank;) * proj
+    m =
+        had_contract(
+            [als.additional_items[:target_transform][fact], dag.(factor_portion)...],
+            rank;
+        ) * proj
 
     return m
 end
@@ -110,7 +125,7 @@ function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
 
     ## Next I need to figure out which partial hadamard_product to skip
     env_list = [
-        (als.additional_items[:partial_mtkrp])[1:end.!=als.additional_items[:factor_to_part_cont][fact]]...,
+        (als.additional_items[:partial_mtkrp])[1:end .!= als.additional_items[:factor_to_part_cont][fact]]...,
     ]
     p = had_contract([p, env_list...], rank)
     return p

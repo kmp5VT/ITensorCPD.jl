@@ -93,8 +93,8 @@ end
 
 using ITensors: random_itensor
 @testset "Low level features" begin
-    i,j,k = Index.((5,5,5))
-    T = random_itensor(Float64, i,j,k)
+    i, j, k = Index.((5, 5, 5))
+    T = random_itensor(Float64, i, j, k)
     r = Index(5, "CPD")
     cp1 = random_CPD(T, r)
 
