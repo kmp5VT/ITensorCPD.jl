@@ -31,8 +31,8 @@ function als_optimize(
         extra_args[:target_decomps] = decomps
         extra_args[:target_transform] = targets
 
-        #return ALS(target, alg, extra_args, check);
-        return optimize_svd(cp, ALS(target, alg, extra_args, check); verbose)
+        return ALS(target, alg, extra_args, check);
+        # return optimize_svd(cp, ALS(target, alg, extra_args, check); verbose)
     end
     return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
