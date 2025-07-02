@@ -63,12 +63,14 @@ end
 function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 
-struct InterpolateTarget{N} <: MttkrpAlgorithm end
+struct InterpolateTarget{Start, End} <: MttkrpAlgorithm end
 
-InterpolateTarget() = InterpolateTarget{0}()
-InterpolateTarget(n) = InterpolateTarget{n}()
+InterpolateTarget() = InterpolateTarget{1, 0}()
+InterpolateTarget(n) = InterpolateTarget{1, n}()
+InterpolateTarget(n,m) = InterpolateTarget{n,m}()
 
-Base.ndims(::InterpolateTarget{N}) where {N} = N
+start(::InterpolateTarget{N}) where {N} = N
+stop(::InterpolateTarget{N,M}) where {N,M} = M
 
 function mttkrp(::InterpolateTarget, als, factors, cp, rank::Index, fact::Int)
     factor_portion = factors[1:end .!= fact]

@@ -87,11 +87,21 @@ function als_optimize(
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
         _, _, p = qr(Tmat, ColumnNorm())
         push!(projectors, p)
-        ndim = iszero(ndims(alg)) ? dim(Ris) : ndims(alg);
-        ndim = dim(Ris) < ndim ? dim(Ris) : ndim
-        t = zeros(eltype(Tmat), (dim(Ris), ndim))
-        for i = 1:ndim
-            t[p[i], i] = 1
+
+        dRis = dim(Ris)
+        int_end = stop(alg)
+        int_end = iszero(int_end) ?  dRis : int_end
+        int_end = dRis < int_end ? dRis : int_end
+
+        int_start = start(alg)
+        @assert int_start > 0 && int_start ≤ int_end
+
+        ndim = int_end - int_start + 1
+        t = zeros(eltype(Tmat), (dRis, ndim))
+        j = 1
+        for i = int_start:int_end
+            t[p[i], j] = 1
+            j += 1
         end
         push!(targets, itensor(t, Ris, Index(ndim, "pivot")));
     end
