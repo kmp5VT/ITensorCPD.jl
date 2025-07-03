@@ -10,10 +10,8 @@ struct KRP <: MttkrpAlgorithm end
 ## order $d - 1$ where d is the number of modes in the target tensor.
 ## This process could be distributed.
 function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
-    ## form the tensor which will be written
-    m = similar(factors[fact])
 
-    factor_portion = factors[1:end.!=fact]
+    factor_portion = factors[1:end .!= fact]
     sequence = ITensors.default_sequence()
     krp = had_contract(dag.(factor_portion), rank; sequence)
 
@@ -29,13 +27,16 @@ struct direct <: MttkrpAlgorithm end
 ## contracting the factor matrices into the tensor for each value of r
 ## This process could be distributed.
 function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
-    m = similar(factors[fact])
-
-    factor_portion = factors[1:end.!=fact]
+    factor_portion = factors[1:end .!= fact]
     if isnothing(als.additional_items[:mttkrp_contract_sequences][fact])
-        als.additional_items[:mttkrp_contract_sequences][fact] = optimal_had_contraction_sequence([als.target, dag.(factor_portion)...], rank)
+        als.additional_items[:mttkrp_contract_sequences][fact] =
+            optimal_had_contraction_sequence([als.target, dag.(factor_portion)...], rank)
     end
-    m = had_contract([als.target, dag.(factor_portion)...], rank; sequence = als.additional_items[:mttkrp_contract_sequences][fact])
+    m = had_contract(
+        [als.target, dag.(factor_portion)...],
+        rank;
+        sequence = als.additional_items[:mttkrp_contract_sequences][fact],
+    )
     return m
 end
 
@@ -61,12 +62,12 @@ function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
             continue
         end
         factor_ind = als.additional_items[:ext_ind_to_factor][x]
-        p = had_contract(factors[factor_ind], p, rank)
+        p = had_contract(dag.(factors[factor_ind]), p, rank)
     end
 
     ## Next I need to figure out which partial hadamard_product to skip
     env_list = [
-        (als.additional_items[:partial_mtkrp])[1:end.!=als.additional_items[:factor_to_part_cont][fact]]...,
+        (als.additional_items[:partial_mtkrp])[1:end .!= als.additional_items[:factor_to_part_cont][fact]]...,
     ]
     p = had_contract([p, env_list...], rank)
     return p
@@ -84,7 +85,7 @@ function post_solve(::network_solver, als, factors, λ, cp, rank::Index, fact::I
         for uniq in uniqueinds(als.target, partial_vertex)
             p = had_contract(
                 p,
-                factors[als.additional_items[:ext_ind_to_factor][uniq]],
+                dag(factors[als.additional_items[:ext_ind_to_factor][uniq]]),
                 rank,
             )
         end

@@ -62,7 +62,7 @@ include("./util.jl")
 #   @test bestfit ≈ 1.0
 # end
 
-@testset "itensor_networks" for elt in (Float32, Float64)
+@testset "itensor_networks" for elt in [Float32, Float64, ComplexF32, ComplexF64]
     nx = 3
     ny = 3
     s = IndsNetwork(named_grid((nx, ny)); link_space = 2)
@@ -85,7 +85,7 @@ include("./util.jl")
 
     check = ITensorCPD.FitCheck(1e-3, 6, sqrt(sqrs[]))
     cpopt =
-        ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = false);
+        ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = true);
     #1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract([s1...])) / sqrs[]
     @test isapprox(
         check.final_fit,
