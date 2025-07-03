@@ -122,7 +122,7 @@ function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
             continue
         end
         factor_ind = als.additional_items[:ext_ind_to_factor][x]
-        p = had_contract(factors[factor_ind], p, rank)
+        p = had_contract(dag.(factors[factor_ind]), p, rank)
     end
 
     ## Next I need to figure out which partial hadamard_product to skip
@@ -145,7 +145,7 @@ function post_solve(::network_solver, als, factors, λ, cp, rank::Index, fact::I
         for uniq in uniqueinds(als.target, partial_vertex)
             p = had_contract(
                 p,
-                factors[als.additional_items[:ext_ind_to_factor][uniq]],
+                dag(factors[als.additional_items[:ext_ind_to_factor][uniq]]),
                 rank,
             )
         end
