@@ -108,8 +108,8 @@ function als_optimize(
     extra_args[:target_projects] = projectors
     extra_args[:target_transform] = targets
 
-    # return ALS(target, alg, extra_args, check)
-    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
+    return ALS(target, alg, extra_args, check)
+    #return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
 function als_optimize(
