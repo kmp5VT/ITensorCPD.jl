@@ -62,7 +62,7 @@ include("./util.jl")
 #   @test bestfit ≈ 1.0
 # end
 
-@testset "itensor_networks" for elt in (Float32, Float64)
+@testset "itensor_networks" for elt in [Float32, Float64, ComplexF32, ComplexF64]
     nx = 3
     ny = 3
     s = IndsNetwork(named_grid((nx, ny)); link_space = 2)
