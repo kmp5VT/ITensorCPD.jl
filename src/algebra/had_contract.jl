@@ -158,7 +158,7 @@ function optimal_had_contraction_sequence(tensors::Vector{<:ITensor}, had::Index
         no_had...,
     ]
 
-    return ITensor.optimal_contraction_sequence(slice_0)
+    return ITensors.optimal_contraction_sequence(slice_0)
 end
 
 function optimal_had_contraction_sequence(tn::ITensorNetwork, had::Index; alg = nothing)
