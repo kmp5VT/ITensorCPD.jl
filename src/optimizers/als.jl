@@ -73,6 +73,11 @@ function als_optimize(
         partial_cont_number += 1
     end
 
+    mttkrp_contract_sequences = Vector{Union{Any,Nothing}}()
+    for _ in inds(cp)
+        push!(mttkrp_contract_sequences, nothing)
+    end
+
     als = ALS(
         target,
         alg,
@@ -81,6 +86,7 @@ function als_optimize(
             :ext_ind_to_vertex => external_ind_to_vertex,
             :ext_ind_to_factor => extern_ind_to_factor,
             :factor_to_part_cont => factor_number_to_partial_cont_number,
+            :mttkrp_contract_sequences => mttkrp_contract_sequences,
         ),
         check,
     )
