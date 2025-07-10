@@ -66,10 +66,15 @@ function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
     end
 
     ## Next I need to figure out which partial hadamard_product to skip
-    env_list = [
+    env_list = ITensorNetwork([
+        p,
         (als.additional_items[:partial_mtkrp])[1:end .!= als.additional_items[:factor_to_part_cont][fact]]...,
-    ]
-    p = had_contract([p, env_list...], rank)
+    ])
+    sequence = als.additional_items[:mttkrp_contract_sequences][fact]
+    sequence =
+        isnothing(sequence) ? optimal_had_contraction_sequence(env_list, rank) : sequence
+    p = had_contract(env_list, rank; sequence)
+    als.additional_items[:mttkrp_contract_sequences][fact] = sequence
     return p
 end
 
