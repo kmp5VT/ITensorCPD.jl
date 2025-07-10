@@ -6,6 +6,7 @@ using ITensorNetworks.NamedGraphs.NamedGraphGenerators: named_grid
 
 using ITensorNetworks: IndsNetwork, delta_network, edges, src, dst, degree, insert_linkinds
 using ITensors
+using Random
 include("./util.jl")
 
 @testset "Known rank Network: eltype=:$(elt)" for elt in
