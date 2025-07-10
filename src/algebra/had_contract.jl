@@ -86,7 +86,13 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
     return C
 end
 
-function had_contract(network::ITensorNetwork, had::Index; α = true, sequence = nothing, alg=nothing)
+function had_contract(
+    network::ITensorNetwork,
+    had::Index;
+    α = true,
+    sequence = nothing,
+    alg = nothing,
+)
     alg = isnothing(alg) ? "optimal" : alg
 
     tensors = [network...]
@@ -116,7 +122,7 @@ function had_contract(network::ITensorNetwork, had::Index; α = true, sequence =
     cslice = α .* contract(slice_0; sequence)
 
     C = ITensor(zeros(eltype(cslice), dim(had) * dim(cslice)), (had, inds(cslice)...))
-    
+
     slices_c = eachslice(array(C); dims = 1)
     slices_c[1] .= cslice
 

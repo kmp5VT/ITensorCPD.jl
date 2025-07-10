@@ -8,62 +8,60 @@ using ITensorNetworks: IndsNetwork, delta_network, edges, src, dst, degree, inse
 using ITensors
 include("./util.jl")
 
-@testset "Known rank Network: eltype=:$(elt)" for elt in (Float32, Float64, ComplexF32, ComplexF64)
-  nx = 3
-  grid = named_grid((nx,3))
-  tn1 = random_tensornetwork(grid; link_space = 1)
-  tn2 = random_tensornetwork(grid; link_space = 1)
-  tn = tn1 + tn2
+@testset "Known rank Network: eltype=:$(elt)" for elt in
+                                                  (Float32, Float64, ComplexF32, ComplexF64)
+    nx = 3
+    grid = named_grid((nx, 3))
+    tn1 = random_tensornetwork(grid; link_space = 1)
+    tn2 = random_tensornetwork(grid; link_space = 1)
+    tn = tn1 + tn2
 
-  subtn = subgraph(tn, ((2,1),(2,2),(2,3)))    
-  s = subtn.data_graph.vertex_data.values
-  sp = replace_inner_w_prime_loop(s)
+    subtn = subgraph(tn, ((2, 1), (2, 2), (2, 3)))
+    s = subtn.data_graph.vertex_data.values
+    sp = replace_inner_w_prime_loop(s)
 
-  sqrs = s[1] * sp[1]
-  for i = 2:length(sp)
-      sqrs = sqrs * s[i] * sp[i]
-  end
+    sqrs = s[1] * sp[1]
+    for i = 2:length(sp)
+        sqrs = sqrs * s[i] * sp[i]
+    end
 
-  check = ITensorCPD.FitCheck(1e-10, 100, sqrt(sqrs[]))
+    check = ITensorCPD.FitCheck(1e-10, 100, sqrt(sqrs[]))
 
-  while check.final_fit < 0.99
-    rng = Random.seed!(Random.RandomDevice())
-    guess = ITensorCPD.random_CPD(subtn, 2; rng)
-    cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose=false);
-  end
-  @test 1 - check.final_fit < 0.01
+    while check.final_fit < 0.99
+        rng = Random.seed!(Random.RandomDevice())
+        guess = ITensorCPD.random_CPD(subtn, 2; rng)
+        cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false);
+    end
+    @test 1 - check.final_fit < 0.01
 
-  nx = ny = 5
-  grid = named_grid((nx,ny))
-  tn1 = random_tensornetwork(grid; link_space = 1)
-  tn2 = random_tensornetwork(grid; link_space = 1)
+    nx = ny = 5
+    grid = named_grid((nx, ny))
+    tn1 = random_tensornetwork(grid; link_space = 1)
+    tn2 = random_tensornetwork(grid; link_space = 1)
 
-  tn = tn1 + tn2
+    tn = tn1 + tn2
 
-  subtn = subgraph(tn, ((2,2),(2,3),(2,4), 
-                          (3,4), (4,4),
-                          (4,3), (4,2),
-                          (3,2))) 
+    subtn = subgraph(tn, ((2, 2), (2, 3), (2, 4), (3, 4), (4, 4), (4, 3), (4, 2), (3, 2)))
 
-  s = subtn.data_graph.vertex_data.values
-  sp = replace_inner_w_prime_loop(s)
+    s = subtn.data_graph.vertex_data.values
+    sp = replace_inner_w_prime_loop(s)
 
-  sqrs = s[1] * sp[1]
-  for i = 2:length(sp)
-      sqrs = sqrs * s[i] * sp[i]
-  end
-  check = ITensorCPD.FitCheck(1e-20, 1000, sqrt(sqrs[]))
+    sqrs = s[1] * sp[1]
+    for i = 2:length(sp)
+        sqrs = sqrs * s[i] * sp[i]
+    end
+    check = ITensorCPD.FitCheck(1e-20, 1000, sqrt(sqrs[]))
 
-  using Random
-  rng = MersenneTwister(3)
-  bestfit = 0;
-  opt = nothing
-  for i in 1:3
-      opt = ITensorCPD.decompose(subtn, Index(2,"rank"); verbose=false, rng);
-      fit = 1.0 - check.final_fit
-      bestfit = fit > bestfit ? fit : bestfit
-  end
-  @test bestfit ≈ 1
+    using Random
+    rng = MersenneTwister(3)
+    bestfit = 0;
+    opt = nothing
+    for i = 1:3
+        opt = ITensorCPD.decompose(subtn, Index(2, "rank"); verbose = false, rng);
+        fit = 1.0 - check.final_fit
+        bestfit = fit > bestfit ? fit : bestfit
+    end
+    @test bestfit ≈ 1
 end
 
 @testset "itensor_networks" for elt in (Float32, Float64, ComplexF32, ComplexF64)
@@ -88,8 +86,7 @@ end
 
 
     check = ITensorCPD.FitCheck(1e-3, 6, sqrt(sqrs[]))
-    cpopt =
-        ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = true);
+    cpopt = ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = true);
     #1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract([s1...])) / sqrs[]
     @test isapprox(
         check.final_fit,
