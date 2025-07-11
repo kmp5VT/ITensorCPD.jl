@@ -63,11 +63,11 @@ end
 function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 
-struct InterpolateTarget{Start, End} <: MttkrpAlgorithm end
+struct InterpolateTarget{Start,End} <: MttkrpAlgorithm end
 
-InterpolateTarget() = InterpolateTarget{1, 0}()
-InterpolateTarget(n) = InterpolateTarget{1, n}()
-InterpolateTarget(n,m) = InterpolateTarget{n,m}()
+InterpolateTarget() = InterpolateTarget{1,0}()
+InterpolateTarget(n) = InterpolateTarget{1,n}()
+InterpolateTarget(n, m) = InterpolateTarget{n,m}()
 
 start(::InterpolateTarget{N}) where {N} = N
 stop(::InterpolateTarget{N,M}) where {N,M} = M
@@ -105,18 +105,19 @@ end
 
 function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end
 
-struct DoubleInterp{Start, End} <: MttkrpAlgorithm end
+struct DoubleInterp{Start,End} <: MttkrpAlgorithm end
 
-DoubleInterp() = DoubleInterp{1, 0}()
-DoubleInterp(n) = DoubleInterp{1, n}()
-DoubleInterp(n,m) = DoubleInterp{n,m}()
+DoubleInterp() = DoubleInterp{1,0}()
+DoubleInterp(n) = DoubleInterp{1,n}()
+DoubleInterp(n, m) = DoubleInterp{n,m}()
 
 start(::DoubleInterp{N}) where {N} = N
 stop(::DoubleInterp{N,M}) where {N,M} = M
 
 function project_krp(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)
     krp = had_contract(factors, rank);
-    return noprime(krp * als.additional_items[:projects_tensors][fact]) * prime(krp; tags=tags(rank))
+    return noprime(krp * als.additional_items[:projects_tensors][fact]) *
+           prime(krp; tags = tags(rank))
 end
 
 function project_target(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)

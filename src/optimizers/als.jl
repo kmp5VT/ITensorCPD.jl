@@ -68,7 +68,7 @@ function als_optimize(
 
         dRis = dim(Ris)
         int_end = stop(alg)
-        int_end = iszero(int_end) ?  dRis : int_end
+        int_end = iszero(int_end) ? dRis : int_end
         int_end = dRis < int_end ? dRis : int_end
 
         int_start = start(alg)
@@ -81,7 +81,7 @@ function als_optimize(
             t[p[i], j] = 1
             j += 1
         end
-        piv_id =  Index(ndim, "pivot")
+        piv_id = Index(ndim, "pivot")
         push!(targets, itensor(t, Ris, piv_id) * itensor(t, Ris', piv_id));
     end
     extra_args[:projects] = projectors
@@ -131,7 +131,7 @@ function als_optimize(
 
         dRis = dim(Ris)
         int_end = stop(alg)
-        int_end = iszero(int_end) ?  dRis : int_end
+        int_end = iszero(int_end) ? dRis : int_end
         int_end = dRis < int_end ? dRis : int_end
 
         int_start = start(alg)
@@ -281,12 +281,13 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
             # #### This is the first KRP * Singular values of T: [(J x K) V]  
             factor_portion = factors[1:end .!= fact]
             projected_KRP = project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
-            projected_target = project_target(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
+            projected_target =
+                project_target(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
 
             # mtkrp = projected_KRP * als.additional_items[:target_transform][fact];
             # ##### Now contract TV by the inverse of KRP * SVD
             U, S, V = svd(projected_KRP, rank; use_absolute_cutoff = true, cutoff = 0)
-            direction = (U * (prime(projected_target; tags=tags(rank)) * V * (1 ./ S)))
+            direction = (U * (prime(projected_target; tags = tags(rank)) * V * (1 ./ S)))
 
             factors[fact], λ = row_norm(direction, target_ind)
             # part_grammian[fact] =
