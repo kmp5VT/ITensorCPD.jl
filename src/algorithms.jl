@@ -99,6 +99,30 @@ struct InvKRP <: ProjectionAlgorithm end
 function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
     return had_contract(factors, rank)
 end
+function project_target(::InvKRP, als, factors, cp, rank::Index, fact::Int)
+    return als.additional_items[:target_transform][fact]
+end
+
+function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+struct DoubleInterp{Start, End} <: MttkrpAlgorithm end
+
+DoubleInterp() = DoubleInterp{1, 0}()
+DoubleInterp(n) = DoubleInterp{1, n}()
+DoubleInterp(n,m) = DoubleInterp{n,m}()
+
+start(::DoubleInterp{N}) where {N} = N
+stop(::DoubleInterp{N,M}) where {N,M} = M
+
+function project_krp(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)
+    krp = had_contract(factors, rank);
+    return noprime(krp * als.additional_items[:projects_tensors][fact]) * prime(krp; tags=tags(rank))
+end
+
+function project_target(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)
+    krp = had_contract(factors, rank);
+    return als.additional_items[:target_transform][fact] * krp
+end
 
 function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end
 

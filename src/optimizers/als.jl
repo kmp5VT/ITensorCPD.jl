@@ -51,6 +51,47 @@ function als_optimize(
 end
 
 function als_optimize(
+    alg::DoubleInterp,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    verbose = false,
+)
+    projectors = Vector{Vector{Int}}()
+    targets = Vector{ITensor}()
+    for i in inds(target)
+        Ris = uniqueinds(target, i)
+        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
+        _, _, p = qr(Tmat, ColumnNorm())
+        push!(projectors, p)
+
+        dRis = dim(Ris)
+        int_end = stop(alg)
+        int_end = iszero(int_end) ?  dRis : int_end
+        int_end = dRis < int_end ? dRis : int_end
+
+        int_start = start(alg)
+        @assert int_start > 0 && int_start ≤ int_end
+
+        ndim = int_end - int_start + 1
+        t = zeros(eltype(Tmat), (dRis, ndim))
+        j = 1
+        for i = int_start:int_end
+            t[p[i], j] = 1
+            j += 1
+        end
+        piv_id =  Index(ndim, "pivot")
+        push!(targets, itensor(t, Ris, piv_id) * itensor(t, Ris', piv_id));
+    end
+    extra_args[:projects] = projectors
+    extra_args[:projects_tensors] = targets
+    extra_args[:target_transform] = [noprime(target * x) for x in targets]
+    # return ALS(target, alg, extra_args, check)
+    return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
+end
+
+function als_optimize(
     alg::TargetDecomp,
     target::ITensor,
     cp::CPD{<:ITensor};
@@ -240,26 +281,29 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
             # #### This is the first KRP * Singular values of T: [(J x K) V]  
             factor_portion = factors[1:end .!= fact]
             projected_KRP = project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
+            projected_target = project_target(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
 
-            mtkrp = projected_KRP * als.additional_items[:target_transform][fact];
+            # mtkrp = projected_KRP * als.additional_items[:target_transform][fact];
             # ##### Now contract TV by the inverse of KRP * SVD
             U, S, V = svd(projected_KRP, rank; use_absolute_cutoff = true, cutoff = 0)
-            direction = U * (als.additional_items[:target_transform][fact] * V * (1 ./ S))
+            direction = (U * (prime(projected_target; tags=tags(rank)) * V * (1 ./ S)))
 
             factors[fact], λ = row_norm(direction, target_ind)
-
-            part_grammian[fact] =
-                factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
+            # part_grammian[fact] =
+            #     factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
         end
 
 
         # potentially save the MTTKRP for the loss function
 
-        save_mttkrp(converge, mtkrp)
+        # save_mttkrp(converge, mtkrp)
 
-        if check_converge(converge, factors, λ, part_grammian; verbose)
-            break
-        end
+        recon = reconstruct(factors, λ)
+        diff = als.target - recon
+        println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
+        # if check_converge(converge, factors, λ, part_grammian; verbose)
+        #     break
+        # end
         iter += 1
     end
 
