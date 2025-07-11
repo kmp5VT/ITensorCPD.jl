@@ -125,7 +125,7 @@ function project_target(::DoubleInterp, als, factors, cp, rank::Index, fact::Int
     return als.additional_items[:target_transform][fact] * krp
 end
 
-function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end
+function post_solve(::DoubleInterp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 ################
 ## This solver is based on ITensorNetwork
