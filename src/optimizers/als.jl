@@ -290,21 +290,11 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
             direction = (U * (prime(projected_target; tags = tags(rank)) * V * (1 ./ S)))
 
             factors[fact], λ = row_norm(direction, target_ind)
-            # part_grammian[fact] =
-            #     factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
         end
-
-
-        # potentially save the MTTKRP for the loss function
-
-        # save_mttkrp(converge, mtkrp)
 
         recon = reconstruct(factors, λ)
         diff = als.target - recon
-        println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
-        # if check_converge(converge, factors, λ, part_grammian; verbose)
-        #     break
-        # end
+        # println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
         iter += 1
     end
 
