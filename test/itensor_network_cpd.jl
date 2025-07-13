@@ -10,7 +10,7 @@ using Random
 include("./util.jl")
 
 @testset "Known rank Network: eltype=:$(elt)" for elt in
-                                                  (Float32, Float64, ComplexF32, ComplexF64)
+                                                 (Float32, Float64, ComplexF32, ComplexF64)
     nx = 3
     grid = named_grid((nx, 3))
     tn1 = random_tensornetwork(grid; link_space = 1)
@@ -31,9 +31,21 @@ include("./util.jl")
     while check.final_fit < 0.99
         rng = Random.seed!(Random.RandomDevice())
         guess = ITensorCPD.random_CPD(subtn, 2; rng)
-        cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false);
+        cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = true);
     end
     @test 1 - check.final_fit < 0.01
+
+    alg = ITensorCPD.InterpolateTarget(1, 20)
+    rng = Random.seed!(Random.RandomDevice());
+    subtn = contract(subtn);
+    guess = ITensorCPD.random_CPD(subtn, 2; rng);
+    cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false, alg);
+    @show check.final_fit
+
+    alg = ITensorCPD.DoubleInterp(1, 2)
+    cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false, alg);
+    diff = subtn - reconstruct(cpd)
+    @show norm(diff) / norm(subtn)
 
     nx = ny = 5
     grid = named_grid((nx, ny))
@@ -87,7 +99,7 @@ end
 
 
     check = ITensorCPD.FitCheck(1e-3, 6, sqrt(sqrs[]))
-    cpopt = ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = true);
+    cpopt = ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = false);
     #1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract([s1...])) / sqrs[]
     @test isapprox(
         check.final_fit,
