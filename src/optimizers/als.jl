@@ -85,7 +85,7 @@ function als_optimize(
     for i in inds(target)
         Ris = uniqueinds(target, i)
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
-        _, _, p = qr(Tmat, ColumnNorm())
+        _, _, p = qr(Tmat, ColumnNorm())    
         push!(projectors, p)
 
         dRis = dim(Ris)
