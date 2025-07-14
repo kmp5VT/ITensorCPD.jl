@@ -63,11 +63,11 @@ end
 function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 
-struct InterpolateTarget{Start, End} <: MttkrpAlgorithm end
+struct InterpolateTarget{Start,End} <: MttkrpAlgorithm end
 
-InterpolateTarget() = InterpolateTarget{1, 0}()
-InterpolateTarget(n) = InterpolateTarget{1, n}()
-InterpolateTarget(n,m) = InterpolateTarget{n,m}()
+InterpolateTarget() = InterpolateTarget{1,0}()
+InterpolateTarget(n) = InterpolateTarget{1,n}()
+InterpolateTarget(n, m) = InterpolateTarget{n,m}()
 
 start(::InterpolateTarget{N}) where {N} = N
 stop(::InterpolateTarget{N,M}) where {N,M} = M
@@ -99,8 +99,33 @@ struct InvKRP <: ProjectionAlgorithm end
 function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
     return had_contract(factors, rank)
 end
+function project_target(::InvKRP, als, factors, cp, rank::Index, fact::Int)
+    return als.additional_items[:target_transform][fact]
+end
 
 function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+struct DoubleInterp{Start,End} <: MttkrpAlgorithm end
+
+DoubleInterp() = DoubleInterp{1,0}()
+DoubleInterp(n) = DoubleInterp{1,n}()
+DoubleInterp(n, m) = DoubleInterp{n,m}()
+
+start(::DoubleInterp{N}) where {N} = N
+stop(::DoubleInterp{N,M}) where {N,M} = M
+
+function project_krp(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)
+    krp = had_contract(factors, rank);
+    return noprime(krp * als.additional_items[:projects_tensors][fact]) *
+           prime(krp; tags = tags(rank))
+end
+
+function project_target(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)
+    krp = had_contract(factors, rank);
+    return als.additional_items[:target_transform][fact] * krp
+end
+
+function post_solve(::DoubleInterp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 ################
 ## This solver is based on ITensorNetwork
@@ -126,10 +151,15 @@ function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
     end
 
     ## Next I need to figure out which partial hadamard_product to skip
-    env_list = [
+    env_list = ITensorNetwork([
+        p,
         (als.additional_items[:partial_mtkrp])[1:end .!= als.additional_items[:factor_to_part_cont][fact]]...,
-    ]
-    p = had_contract([p, env_list...], rank)
+    ])
+    sequence = als.additional_items[:mttkrp_contract_sequences][fact]
+    sequence =
+        isnothing(sequence) ? optimal_had_contraction_sequence(env_list, rank) : sequence
+    p = had_contract(env_list, rank; sequence)
+    als.additional_items[:mttkrp_contract_sequences][fact] = sequence
     return p
 end
 

@@ -41,8 +41,18 @@
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-5
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.InterpolateTarget(), check, verbose = true);
+        als_optimize(A, cp_A; alg = ITensorCPD.InterpolateTarget(), check);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(svd_opt_A)) /
+          norm(ITensorCPD.reconstruct(opt_A)) < 1e-5
+
+    ## This method uses the interpolative squared to precondition the problem.
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.DoubleInterp(), check, verbose = true);
+    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(svd_opt_A)) /
+          norm(ITensorCPD.reconstruct(opt_A)) < 1e-5
+
+    direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check)
+    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(direct_inversion_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-5
 end
 

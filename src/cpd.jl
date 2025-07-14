@@ -5,11 +5,18 @@ using Random
 struct CPD{TargetT}
     factors::Vector{ITensor}
     λ::ITensor
+    inds::Vector{Index}
+end
+
+function CPD{TargetT}(factors::Vector{ITensor}, λ::ITensor) where {TargetT}
+    is = [ind(x, 2) for x in factors]
+    CPD{TargetT}(factors, λ, is)
 end
 
 # CPD(target, factors, λ) = CPD(target, factors, λ)
 
 factors(cp::CPD) = getproperty(cp, :factors)
+ITensors.inds(cp::CPD) = getproperty(cp, :inds)
 
 Base.getindex(cp::CPD, i) = cp.factors[i]
 Base.getindex(cp::CPD) = cp.λ
