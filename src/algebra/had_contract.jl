@@ -40,6 +40,7 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
     had_tensors = Vector{ITensor}([])
     no_had = Vector{ITensor}([])
 
+    # Find all the tensors that don't contain the hadamard index
     for ten in tensors
         if had ∉ inds(ten)
             push!(no_had, ten)
@@ -48,7 +49,9 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
         push!(had_tensors, ten)
     end
 
+    # For all that do, find the mode remember its position in the each index list
     positions_of_had = Dict(y => (findfirst(x -> x == had, inds(y))) for y in had_tensors)
+    # Slice each tensor along the hadamard dimension
     slices = [eachslice(array(x); dims = positions_of_had[x]) for x in had_tensors]
     slices_inds = [inds(x)[1:end .!= positions_of_had[x]] for x in had_tensors]
 
@@ -57,17 +60,21 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
         no_had...,
     ]
 
+    # Find the best way to contract the tensor graph if neessary
     sequence =
         isnothing(sequence) ? ITensors.optimal_contraction_sequence(slice_0) : sequence
 
+    # Contract the full list of tensors but only the first hadamard slice
     cslice = α .* contract(slice_0; sequence)
 
     # ## Right now I have to fill C with zeros because I hate empty tensor
+    # Use the first slice to determine the final indices and make the full resulting tensor
     C = ITensor(zeros(eltype(cslice), dim(had) * dim(cslice)), (had, inds(cslice)...))
     slices_c = eachslice(array(C); dims = 1)
     slices_c[1] .= cslice
 
     ## TODO would be better to do in place but can't do a list of tensors in place right now
+    ## Contract the rest
     for i = 2:dim(had)
         slices_c[i] .= array(
             α .* contract(
@@ -82,7 +89,6 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
         )
     end
 
-    # return isempty(no_had) ? C : contract([C, no_had...])
     return C
 end
 
