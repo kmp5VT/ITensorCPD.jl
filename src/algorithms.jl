@@ -115,13 +115,12 @@ start(::DoubleInterp{N}) where {N} = N
 stop(::DoubleInterp{N,M}) where {N,M} = M
 
 function project_krp(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)
-    krp = had_contract(factors, rank);
-    return noprime(krp * als.additional_items[:projects_tensors][fact]) *
-           prime(krp; tags = tags(rank))
+    krp = had_contract([als.additional_items[:projects_tensors][fact], factors...], rank);
+    return krp * prime(krp; tags = tags(rank))
 end
 
 function project_target(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)
-    krp = had_contract(factors, rank);
+    krp = had_contract([als.additional_items[:projects_tensors][fact], factors...], rank);
     return als.additional_items[:target_transform][fact] * krp
 end
 

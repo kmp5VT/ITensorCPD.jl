@@ -60,6 +60,7 @@ function als_optimize(
 )
     projectors = Vector{Vector{Int}}()
     targets = Vector{ITensor}()
+    piv_id = nothing
     for i in inds(target)
         Ris = uniqueinds(target, i)
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
@@ -82,11 +83,19 @@ function als_optimize(
             j += 1
         end
         piv_id = Index(ndim, "pivot")
-        push!(targets, itensor(t, Ris, piv_id) * itensor(t, Ris', piv_id));
+        push!(targets, itensor(t, Ris, piv_id));
     end
     extra_args[:projects] = projectors
     extra_args[:projects_tensors] = targets
     extra_args[:target_transform] = [noprime(target * x) for x in targets]
+    
+    # for (x, t) in zip(extra_args[:target_transform], extra_args[:projects_tensors])
+    #     i = ind(x, 1)
+    #     Ris = uniqueinds(target, i)
+    #     piv_id = ind(x,2)
+    #     v = x * itensor(t.tensor.storage.data, Ris, piv_id)
+    #     @show(norm(v - target) / norm(target))
+    # end
     # return ALS(target, alg, extra_args, check)
     return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
 end
@@ -294,7 +303,7 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
 
         recon = reconstruct(factors, λ)
         diff = als.target - recon
-        # println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
+        println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
         iter += 1
     end
 
