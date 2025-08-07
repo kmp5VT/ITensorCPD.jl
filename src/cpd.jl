@@ -17,6 +17,7 @@ end
 
 factors(cp::CPD) = getproperty(cp, :factors)
 ITensors.inds(cp::CPD) = getproperty(cp, :inds)
+paramT(cp::CPD{T}) where {T} = T
 
 Base.getindex(cp::CPD, i) = cp.factors[i]
 Base.getindex(cp::CPD) = cp.λ
@@ -36,11 +37,12 @@ Base.eltype(cp::CPD) = return eltype(cp.λ)
 ## This makes a random CPD for a given ITensor
 function random_CPD(target::ITensor, rank::Index; rng = nothing)
     rng = isnothing(rng) ? MersenneTwister(3) : rng
+    elt = eltype(target)
     cp = Vector{ITensor}([])
     l = nothing
 
     for i in inds(target)
-        it = itensor(NDTensors.randomTensor(NDTensors.datatype(target), (rank, i)))
+        it = random_itensor(rng, elt, rank, i)
         rtensor, l = row_norm(it, i)
         push!(cp, rtensor)
     end
