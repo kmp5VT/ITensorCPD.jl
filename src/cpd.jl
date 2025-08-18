@@ -17,6 +17,7 @@ end
 
 factors(cp::CPD) = getproperty(cp, :factors)
 ITensors.inds(cp::CPD) = getproperty(cp, :inds)
+paramT(cp::CPD{T}) where {T} = T
 
 Base.getindex(cp::CPD, i) = cp.factors[i]
 Base.getindex(cp::CPD) = cp.λ

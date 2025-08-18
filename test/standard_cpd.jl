@@ -80,3 +80,17 @@ end
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check)
     @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
 end
+
+
+@testset "Build CPD to error threshold, elt=$elt" for elt in [Float64, ComplexF64]
+    verbose = false
+    i, j, k = Index.((20, 30, 40))
+    r = Index(400, "CP_rank")
+    A = random_itensor(elt, i, j, k)
+    ## Calling decompose
+    # opt_A = ITensorCPD.decompose(A, r);
+    opt_A = ITensorCPD.decompose(A, 1e-3, 400; check=ITensorCPD.FitCheck(1e-4, 100, norm(A)), start_rank = 200, rank_step = 200);
+    
+    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-3
+
+end
