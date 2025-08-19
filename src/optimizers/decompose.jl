@@ -44,7 +44,7 @@ function ITensorCPD.decompose(
             return cpd
         else
             current_rank += rank_step;
-            println("\nIncreasing rank to: $(current_rank)")    
+            verbose && println("\nIncreasing rank to: $(current_rank)")    
         end
 
         if current_rank > max_rank
