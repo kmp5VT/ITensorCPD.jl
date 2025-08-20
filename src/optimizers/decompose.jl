@@ -63,16 +63,10 @@ function increase_cpd_rank(cpd::ITensorCPD.CPD, new_rank::Index; rng = nothing)
 
     old_rank = cp_rank(cpd)
     @assert dim(new_rank) ≥ dim(old_rank)
-    
-    updated_factors = Vector{ITensor}()
-    for i in 1:length(cpd.factors)
-        is = ind(cpd[i], 2)
-        it = random_itensor(rng, elt, new_rank, is)
-        rtensor, l = row_norm(it, is)
 
-        array(rtensor)[1:dim(old_rank),:] = array(cpd[i])[:,:]
-        push!(updated_factors, rtensor)
+    updated_factors, lambda = random_factors(eltype(cpd), inds(cpd), new_rank; rng)
+    for (old, new) in zip(cpd.factors, updated_factors)
+        array(new)[:,1:dim(old_rank)] = array(old)
     end
-    lambda = itensor(similar(data(cpd.λ), dim(new_rank)), new_rank)
     return ITensorCPD.CPD{paramT(cpd)}(updated_factors, lambda)
 end

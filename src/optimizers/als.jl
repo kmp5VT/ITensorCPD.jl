@@ -119,9 +119,11 @@ function optimize(cp::CPD, als::ALS; verbose = true)
 
             ## potentially better to first inverse the grammian then contract
             ## qr(A, Val(true))
+            solution = qr(array(dag(grammian)), ColumnNorm()) \ transpose(array(mtkrp))
+            
             factors[fact], λ = row_norm(
-                itensor(qr(array(dag(grammian)), ColumnNorm()) \ array(mtkrp), inds(mtkrp)),
-                ind(mtkrp, 2),
+                itensor(copy(transpose(solution)), inds(mtkrp)),
+                ind(cp, fact),
             )
             part_grammian[fact] =
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))

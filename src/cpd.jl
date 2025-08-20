@@ -1,4 +1,5 @@
 using ITensors
+using ITensors: Indices
 using ITensors.NDTensors: similartype
 using Random
 
@@ -9,11 +10,9 @@ struct CPD{TargetT}
 end
 
 function CPD{TargetT}(factors::Vector{ITensor}, λ::ITensor) where {TargetT}
-    is = [ind(x, 2) for x in factors]
+    is = [ind(x, 1) for x in factors]
     CPD{TargetT}(factors, λ, is)
 end
-
-# CPD(target, factors, λ) = CPD(target, factors, λ)
 
 factors(cp::CPD) = getproperty(cp, :factors)
 ITensors.inds(cp::CPD) = getproperty(cp, :inds)
@@ -36,22 +35,29 @@ end
 
 Base.eltype(cp::CPD) = return eltype(cp.λ)
 
-## This makes a random CPD for a given ITensor
-function random_CPD(target::ITensor, rank::Index; rng = nothing)
+function random_factors(elt::Union{<:Type, Nothing}, is::Indices, rank::Index; rng=nothing)
+    @assert !isnothing(elt)
     rng = isnothing(rng) ? MersenneTwister(3) : rng
     cp = Vector{ITensor}([])
     l = nothing
-
-    for i in inds(target)
-        it = itensor(NDTensors.randomTensor(NDTensors.datatype(target), (rank, i)))
+    for i in is
+        it = itensor(NDTensors.randomTensor(elt, (i, rank)))
         rtensor, l = row_norm(it, i)
         push!(cp, rtensor)
     end
-    return CPD{ITensor}(cp, l)
+
+    return cp, l
 end
 
+## This makes a random CPD for a given ITensor
+function random_CPD(target::ITensor, rank::Index; rng = nothing)
+    factors, lambda = random_factors(eltype(target), inds(target), rank; rng)
+    return CPD{ITensor}(factors, lambda)
+end
+
+## TODO add a random hash key to label
 function random_CPD(target, rank::Int; rng = nothing)
-    random_CPD(target, Index(rank, "CPD"); rng)
+    return random_CPD(target, ITensors.Index(rank, "CPD"); rng)
 end
 
 using ITensorNetworks: ITensorNetwork, nv, vertices
@@ -64,13 +70,8 @@ function random_CPD(target::ITensorNetwork, rank::Index; rng = nothing)
     ## What we need to do is loop through every
     ## vertex and find the common/non-common inds.
     ## for every noncommonind push
-    for v in verts
-        for uniq in uniqueinds(target, v)
-            factor = row_norm(random_itensor(rng, elt, rank, uniq), uniq)[1]
-            push!(cp, factor)
-        end
-    end
+    is = vcat([uniqueinds(target, v) for v in verts]...)
+    factors, lambda = random_factors(elt, is, rank; rng);
 
-    l = fill!(ITensor(elt, rank), zero(elt))
-    return CPD{ITensorNetwork}(cp, l)
+    return CPD{ITensorNetwork}(factors, lambda)
 end

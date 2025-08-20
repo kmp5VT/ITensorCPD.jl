@@ -15,7 +15,7 @@ function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
     sequence = ITensors.default_sequence()
     krp = had_contract(dag.(factor_portion), rank; sequence)
 
-    m = krp * als.target
+    m = als.target * krp
     return m
 end
 
