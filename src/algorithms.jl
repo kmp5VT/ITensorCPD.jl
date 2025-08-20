@@ -54,7 +54,7 @@ struct network_solver <: MttkrpAlgorithm end
 function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
     m = similar(factors[fact])
 
-    target_index = ind(factors[fact], 2)
+    target_index = ind(cp, fact)
     target_vert = als.additional_items[:ext_ind_to_vertex][target_index]
     p = copy(als.target[target_vert])
     for x in uniqueinds(als.target, target_vert)
@@ -85,7 +85,7 @@ function post_solve(::network_solver, als, factors, λ, cp, rank::Index, fact::I
     if fact == length(factors) ||
        als.additional_items[:factor_to_part_cont][fact+1] != partial_ind
         ## go through factors
-        partial_vertex = als.additional_items[:ext_ind_to_vertex][ind(factors[fact], 2)]
+        partial_vertex = als.additional_items[:ext_ind_to_vertex][ind(cp, fact)]
         p = als.target[partial_vertex]
         for uniq in uniqueinds(als.target, partial_vertex)
             p = had_contract(
