@@ -62,7 +62,7 @@ function als_optimize(
         partial = target[v]
         for uniq in uniqueinds(target, v)
             external_ind_to_vertex[uniq] = v
-            factor_pos = findfirst(x -> x == uniq, ind.(cp.factors, 2))
+            factor_pos = findfirst(x -> x == uniq, inds(cp))
             factor = dag(cp.factors[factor_pos])
             partial = had_contract(partial, factor, cpRank)
             extern_ind_to_factor[uniq] = factor_pos
