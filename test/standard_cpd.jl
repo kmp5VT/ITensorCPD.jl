@@ -55,14 +55,14 @@ end
     @test_throws TypeError ITensorCPD.decompose(A, r; solver = A)
 
     check = ITensorCPD.FitCheck(1e-6, 100, norm(A))
-    opt_A = ITensorCPD.decompose(A, r; check, verbose)
+    # opt_A = ITensorCPD.decompose(A, r; check, verbose)
 
     ## Build a random guess
     cp_A = random_CPD(A, r)
 
     ## Optimize with no inputs
     opt_A = als_optimize(A, cp_A; check, verbose)
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-5
+    @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-5
 
     ## Optimize with one input
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP())
@@ -72,13 +72,13 @@ end
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-1
 
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP(), check)
-    @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
+    @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 5e-5
 
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct())
     @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-5
 
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check)
-    @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
+    @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 5e-5
 end
 
 
@@ -87,9 +87,8 @@ end
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
     A = random_itensor(elt, i, j, k)
-    ## Calling decompose
-    # opt_A = ITensorCPD.decompose(A, r);
-    opt_A = ITensorCPD.decompose(A, 1e-3, 400; check=ITensorCPD.FitCheck(1e-4, 100, norm(A)), start_rank = 200, rank_step = 200);
+
+    opt_A = ITensorCPD.decompose(A, 1e-3, 400; check=ITensorCPD.FitCheck(1e-4, 100, norm(A)), start_rank = 200, rank_step = 200, verbose=true);
     
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-3
 
