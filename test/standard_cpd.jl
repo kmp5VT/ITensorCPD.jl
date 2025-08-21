@@ -49,9 +49,25 @@
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (20*40, 20*40, 20*30)), check);
+    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
+          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+
     direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(direct_inversion_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+
+    
+    ## This tests to see if we can interpolate a known low rank tensor
+    A = ITensorCPD.reconstruct(random_CPD(A, 20))
+
+    cp_A = random_CPD(A, 10)
+    opt_A = ITensorCPD.als_optimize(A, cp_A; check=ITensorCPD.FitCheck(1e-3, 100, norm(A)), verbose=true);
+    exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check=ITensorCPD.NoCheck(9));
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.01
 end
 
 @testset "Standard CPD, elt=$elt" for elt in [Float32, ComplexF32]
