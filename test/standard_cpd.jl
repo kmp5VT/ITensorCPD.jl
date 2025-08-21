@@ -42,15 +42,10 @@
 
     check = ITensorCPD.NoCheck(35)
 
-    ## Test broken 
-    # int_opt_A =
-    #     als_optimize(A, cp_A; alg = ITensorCPD.InterpolateTarget(), check);
-    # @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
-    #       norm(ITensorCPD.reconstruct(opt_A)) < 1e-5
 
     ## This method uses the interpolative squared to precondition the problem.
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.DoubleInterp(), check);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 

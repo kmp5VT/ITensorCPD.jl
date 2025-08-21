@@ -44,6 +44,12 @@ end
 
 function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) end
 
+### This solver is slightly silly. It takes a higher-order tensor T forms the SVD of every unfolding
+### for example T(a,b,c) => T(a,bc) => U(a,r) S(r,rp) V(rp,bc). We use this decomposition to represent T as
+### T(a,b'c') V(r,b'c') V(r,bc). Then we solve f(A) = || T(a,b'c') V(r,b'c') V(r,bc) - A(a,m) (B(b,m) ⊙ C(c,m)) ||².
+### We repeat this process for every factor matrix. This gains us a smaller target tensor to store,
+### i.e. (U(a,r) S(r,rp)) for each mode but solving the least squares problem is no less expensive.
+
 struct TargetDecomp <: MttkrpAlgorithm end
 
 function mttkrp(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
@@ -63,37 +69,36 @@ end
 function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 
-struct InterpolateTarget{Start,End} <: MttkrpAlgorithm end
 
-InterpolateTarget() = InterpolateTarget{1,0}()
-InterpolateTarget(n) = InterpolateTarget{1,n}()
-InterpolateTarget(n, m) = InterpolateTarget{n,m}()
+### With this solver we are trying to solve the modified least squares problem
+### || T(a,b,c) P(b,c,l) - A(a,m) (B(b,m) ⊙ C(c,m)) P(b,c,l) ||² (and equivalent for all other factor matrices)
+### In order to solve this equation we need the following to be true P(b,c l) P(b',c', l) ≈ I(b,c,b',c')
+### One easy way to do this is to make P a pivot matrix from a QR or LU. We will form P by taking the pivoted QR
+### of T and choose a set certain number of pivots in each row.
+struct QRPivProjected{Start,End} <: MttkrpAlgorithm end
 
-start(::InterpolateTarget{N}) where {N} = N
-stop(::InterpolateTarget{N,M}) where {N,M} = M
+QRPivProjected() = QRPivProjected{1,0}()
+QRPivProjected(n) = QRPivProjected{1,n}()
+QRPivProjected(n, m) = QRPivProjected{n,m}()
 
-function mttkrp(::InterpolateTarget, als, factors, cp, rank::Index, fact::Int)
-    factor_portion = factors[1:end .!= fact]
-    proj = als.target * als.additional_items[:target_transform][fact]
-    m =
-        had_contract(
-            [als.additional_items[:target_transform][fact], dag.(factor_portion)...],
-            rank;
-        ) * proj
+start(::QRPivProjected{N}) where {N} = N
+stop(::QRPivProjected{N,M}) where {N,M} = M
 
-    return m
+function project_krp(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
+    krp = had_contract([als.additional_items[:projects_tensors][fact], factors...], rank);
+    return krp * prime(krp; tags = tags(rank))
 end
 
-function post_solve(::InterpolateTarget, als, factors, λ, cp, rank::Index, fact::Integer) end
+function project_target(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
+    krp = had_contract([als.additional_items[:projects_tensors][fact], factors...], rank);
+    return als.additional_items[:target_transform][fact] * krp
+end
 
-################
-## This solver is an experimental solver 
-## Which takes the SVD of each mode of the 
-## tensor in the long direction and solves the problem
-## T_i V_i = A [(B x C) V_i] where T_i is the tensor T 
-## Matricized along the ith mode and V_i matrix from 
-## the SVD of the matricized T_i
+function post_solve(::QRPivProjected, als, factors, λ, cp, rank::Index, fact::Integer) end
 
+
+## This solver does not form the normal equations. 
+## We simply compute the khatri rao product and directly compute Ax=B for each least squres problem.
 struct InvKRP <: ProjectionAlgorithm end
 
 function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
@@ -104,27 +109,6 @@ function project_target(::InvKRP, als, factors, cp, rank::Index, fact::Int)
 end
 
 function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end
-
-struct DoubleInterp{Start,End} <: MttkrpAlgorithm end
-
-DoubleInterp() = DoubleInterp{1,0}()
-DoubleInterp(n) = DoubleInterp{1,n}()
-DoubleInterp(n, m) = DoubleInterp{n,m}()
-
-start(::DoubleInterp{N}) where {N} = N
-stop(::DoubleInterp{N,M}) where {N,M} = M
-
-function project_krp(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)
-    krp = had_contract([als.additional_items[:projects_tensors][fact], factors...], rank);
-    return krp * prime(krp; tags = tags(rank))
-end
-
-function project_target(::DoubleInterp, als, factors, cp, rank::Index, fact::Int)
-    krp = had_contract([als.additional_items[:projects_tensors][fact], factors...], rank);
-    return als.additional_items[:target_transform][fact] * krp
-end
-
-function post_solve(::DoubleInterp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 ################
 ## This solver is based on ITensorNetwork

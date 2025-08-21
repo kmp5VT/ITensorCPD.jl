@@ -42,7 +42,7 @@ include("./util.jl")
     cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false, alg);
     @show check.final_fit
 
-    alg = ITensorCPD.DoubleInterp(1, 2)
+    alg = ITensorCPD.QRPivProjected(1, 2)
     cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false, alg);
     diff = subtn - reconstruct(cpd)
     @show norm(diff) / norm(subtn)

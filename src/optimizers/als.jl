@@ -51,7 +51,7 @@ function als_optimize(
 end
 
 function als_optimize(
-    alg::DoubleInterp,
+    alg::QRPivProjected,
     target::ITensor,
     cp::CPD{<:ITensor};
     extra_args = Dict(),
@@ -119,46 +119,6 @@ function als_optimize(
     extra_args[:target_decomps] = decomps
     extra_args[:target_transform] = targets
 
-    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
-end
-
-function als_optimize(
-    alg::InterpolateTarget,
-    target::ITensor,
-    cp::CPD{<:ITensor};
-    extra_args = Dict(),
-    check = nothing,
-    verbose = false,
-)
-    projectors = Vector{Vector{Int}}()
-    targets = Vector{ITensor}()
-    for i in inds(target)
-        Ris = uniqueinds(target, i)
-        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
-        _, _, p = qr(Tmat, ColumnNorm())    
-        push!(projectors, p)
-
-        dRis = dim(Ris)
-        int_end = stop(alg)
-        int_end = iszero(int_end) ? dRis : int_end
-        int_end = dRis < int_end ? dRis : int_end
-
-        int_start = start(alg)
-        @assert int_start > 0 && int_start ≤ int_end
-
-        ndim = int_end - int_start + 1
-        t = zeros(eltype(Tmat), (dRis, ndim))
-        j = 1
-        for i = int_start:int_end
-            t[p[i], j] = 1
-            j += 1
-        end
-        push!(targets, itensor(t, Ris, Index(ndim, "pivot")));
-    end
-    extra_args[:target_projects] = projectors
-    extra_args[:target_transform] = targets
-
-    #return ALS(target, alg, extra_args, check)
     return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
