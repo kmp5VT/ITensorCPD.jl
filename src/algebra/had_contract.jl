@@ -7,32 +7,31 @@ function had_contract(A::ITensor, B::ITensor, had::Index; α = true)
     dataT = NDTensors.datatype(A)
     if had ∉ commoninds(A, B)
         return α .* (A * B)
-    else
-        position_of_had_A = findfirst(x -> x == had, inds(A))
-        position_of_had_B = findfirst(x -> x == had, inds(B))
-        slices_A = eachslice(array(A); dims = position_of_had_A)
-        slices_B = eachslice(array(B); dims = position_of_had_B)
-
-        @assert length(slices_A) == length(slices_B)
-        inds_c = noncommoninds(A, B)
-        elt = promote_type(eltype(A), eltype(B))
-        is = Tuple(vcat(inds_c..., had))
-        C = similar(A, is)
-        
-        slices_C = eachslice(array(C); dims = ndims(C))
-        a_inds = [ind(A, x) for x = 1:ndims(A) if x != position_of_had_A]
-        b_inds = [ind(B, x) for x = 1:ndims(B) if x != position_of_had_B]
-        ## TODO parallelize over this loop.
-        for i = 1:length(slices_A)
-            ITensors.contract!(
-                itensor(slices_C[i], inds_c),
-                itensor(slices_A[i], a_inds),
-                itensor(slices_B[i], b_inds),
-                elt(α),
-            )
-        end
-        return C
     end
+    position_of_had_A = findfirst(x -> x == had, inds(A))
+    position_of_had_B = findfirst(x -> x == had, inds(B))
+    slices_A = eachslice(array(A); dims = position_of_had_A)
+    slices_B = eachslice(array(B); dims = position_of_had_B)
+
+    @assert length(slices_A) == length(slices_B)
+    inds_c = noncommoninds(A, B)
+    elt = promote_type(eltype(A), eltype(B))
+    is = Tuple(vcat(inds_c..., had))
+    C = similar(A, is)
+    
+    slices_C = eachslice(array(C); dims = ndims(C))
+    a_inds = [ind(A, x) for x = 1:ndims(A) if x != position_of_had_A]
+    b_inds = [ind(B, x) for x = 1:ndims(B) if x != position_of_had_B]
+    ## TODO parallelize over this loop.
+    for i = 1:length(slices_A)
+        ITensors.contract!(
+            itensor(slices_C[i], inds_c),
+            itensor(slices_A[i], a_inds),
+            itensor(slices_B[i], b_inds),
+            elt(α),
+        )
+    end
+    return C
 end
 
 ## TODO this is broken when some items have a rank but others do not.
