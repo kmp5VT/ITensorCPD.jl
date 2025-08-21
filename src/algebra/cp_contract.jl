@@ -14,7 +14,7 @@ function tn_cp_contract(tn::ITensorNetwork, cp::CPD)
         ## For each node find the indices that are not connected to other tensors in the node
         iss = uniqueinds(tnp, v)
         for is in iss
-            cp_pos = findfirst(x -> x == is, ind.(cp.factors, 2))
+            cp_pos = findfirst(x -> x == is, inds(cp))
 
             isnothing(cp_pos) && continue
             tnp[v] = ITensorCPD.had_contract(cp[cp_pos], tnp[v], r)
@@ -22,32 +22,31 @@ function tn_cp_contract(tn::ITensorNetwork, cp::CPD)
         end
     end
     v = [cp[x] for x in contracted_cps]
-    return tnp, filter(x -> x ∉ v, cp.factors)
+    return tnp, CPD{paramT(cp)}(filter(x -> x ∉ v, cp.factors), cp.λ)
 end
 
 # This contracts two sets of CPD factor matrices. It will form a 
 # resulting matrix that is rank of cp1 by rank of cp2. The function
 # also returns the set of factor matrices from cp1 that do not connect to cp2
 # and the factor matrices from cp2 that do not connect to cp1.
-function cp_cp_contract(cp1::Vector{ITensor}, cp2::Vector{ITensor})
-    r1 = ind(cp1[1], 1)
-    r2 = ind(cp2[1], 1)
+function cp_cp_contract(cp1::CPD, cp2::CPD)
+    r1 = cp_rank(cp1)#ind(cp1[1], 1)
+    r2 = cp_rank(cp2)#ind(cp2[1], 1)
     ## TODO check to see if eltypes are equivalent
     elt = eltype(cp1[1])
     inner = ITensor(elt, r1, r2)
     fill!(inner, one(elt))
     inner_pos_cp1, inner_pos_cp2 = Vector{Int}(), Vector{Int}()
     for i = 1:length(cp1)
-        c1 = cp1[i]
-        pos = findfirst(x -> x == ind(c1, 2), ind.(cp2, 2))
+        pos = findfirst(x -> x == ind(cp1, i), inds(cp2))
         if isnothing(pos)
             continue
         end
-        data(inner) .*= data(c1 * cp2[pos])
+        data(inner) .*= data(cp1[i] * cp2[pos])
         push!(inner_pos_cp1, i)
         push!(inner_pos_cp2, pos)
     end
-    v1 = [cp1[x] for x in inner_pos_cp1]
-    v2 = [cp2[x] for x in inner_pos_cp2]
-    return inner, filter(x -> x ∉ v1, cp1), filter(x -> x ∉ v2, cp2)
+    v1 = cp1[inner_pos_cp1]
+    v2 = cp2[inner_pos_cp2]
+    return inner, CPD{paramT(cp1)}(filter(x -> x ∉ v1, cp1.factors), cp1.λ), CPD{paramT(cp2)}(filter(x -> x ∉ v2, cp2.factors), cp2.λ)
 end

@@ -158,8 +158,8 @@ function als_optimize(
     extra_args[:target_projects] = projectors
     extra_args[:target_transform] = targets
 
-    return ALS(target, alg, extra_args, check)
-    #return optimize(cp, ALS(target, alg, extra_args, check); verbose)
+    #return ALS(target, alg, extra_args, check)
+    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
 function als_optimize(
@@ -190,7 +190,7 @@ function als_optimize(
         partial = target[v]
         for uniq in uniqueinds(target, v)
             external_ind_to_vertex[uniq] = v
-            factor_pos = findfirst(x -> x == uniq, ind.(cp.factors, 2))
+            factor_pos = findfirst(x -> x == uniq, inds(cp))
             factor = dag(cp.factors[factor_pos])
             partial = had_contract(partial, factor, cpRank)
             extern_ind_to_factor[uniq] = factor_pos
@@ -247,9 +247,11 @@ function optimize(cp::CPD, als::ALS; verbose = true)
 
             ## potentially better to first inverse the grammian then contract
             ## qr(A, Val(true))
+            solution = qr(array(dag(grammian)), ColumnNorm()) \ transpose(array(mtkrp))
+            
             factors[fact], λ = row_norm(
-                itensor(qr(array(dag(grammian)), ColumnNorm()) \ array(mtkrp), inds(mtkrp)),
-                ind(mtkrp, 2),
+                itensor(copy(transpose(solution)), inds(mtkrp)),
+                ind(cp, fact),
             )
             part_grammian[fact] =
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
@@ -274,17 +276,14 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
     rank = cp_rank(cp)
     iter = 0
 
-    num_factors = length(cp.factors)
     λ = copy(cp.λ)
     factors = copy(cp.factors)
-    part_grammian = cp.factors .* dag.(prime.(cp.factors; tags = tags(rank)))
 
     converge = als.check
     target_inds = inds(als.target)
 
     while iter < converge.max_counter
-        mtkrp = nothing
-        for fact = 1:num_factors
+        for fact = 1:length(cp)
             target_ind = target_inds[fact]
             # ### Trying to solve T V = I [(J x K) V] 
             # #### This is the first KRP * Singular values of T: [(J x K) V]  

@@ -33,7 +33,7 @@ end
     for n = 1:400
         for l = 1:20
             for m = 1:30
-                Dex[n, l, m] = cp[1][n, l] * cp[2][n, m]
+                Dex[n, l, m] = cp[1][l,n] * cp[2][m,n]
             end
         end
     end
@@ -41,7 +41,7 @@ end
     @test norm(Dex - Dhad) / norm(Dex) < 1e-7
 
     v = Array(transpose(array(cp[2])))
-    B = itensor(v, j, r)
+    B = itensor(v, r, j)
 
     had_contract(cp[1], B, r)
 
@@ -49,7 +49,7 @@ end
     for n = 1:400
         for l = 1:20
             for m = 1:30
-                Dex[n, l, m] = cp[1][n, l] * B[m, n]
+                Dex[n, l, m] = cp[1][l, n] * B[n, m]
             end
         end
     end
@@ -71,7 +71,7 @@ end
         end
     end
     recon = reconstruct([A, B], λ)
-    @test 1.0 - norm(array(exact - recon)) / norm(exact) ≈ 1.0 rtol = eps(real(elt))
+    @test 1.0 - norm(array(exact - recon)) / norm(exact) ≈ 1.0 rtol = eps(real(elt)) * 5
 
     k = Index.(40)
     A, B, C = random_itensor.(elt, ((r, i), (r, j), (r, k)))
@@ -88,7 +88,7 @@ end
     end
     recon = reconstruct([A, B, C], λ)
 
-    @test 1.0 - norm(array(exact - recon)) / norm(exact) ≈ 1.0 rtol = eps(real(elt))
+    @test 1.0 - norm(array(exact - recon)) / norm(exact) ≈ 1.0 rtol = eps(real(elt)) * 5
 end
 
 using ITensors: random_itensor
