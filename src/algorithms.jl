@@ -77,9 +77,11 @@ function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Int
 ### of T and choose a set certain number of pivots in each row.
 struct QRPivProjected{Start,End} <: MttkrpAlgorithm end
 
-QRPivProjected() = QRPivProjected{1,0}()
-QRPivProjected(n) = QRPivProjected{1,n}()
-QRPivProjected(n, m) = QRPivProjected{n,m}()
+## TODO modify to use ranges 
+QRPivProjected() = QRPivProjected{(1,),(0,)}()
+QRPivProjected(n) = QRPivProjected{(1,),(n,)}()
+QRPivProjected(n::Int, m::Int) = QRPivProjected{(n,),(m,)}()
+QRPivProjected(n::Tuple, m::Tuple) = QRPivProjected{n,m}()
 
 start(::QRPivProjected{N}) where {N} = N
 stop(::QRPivProjected{N,M}) where {N,M} = M

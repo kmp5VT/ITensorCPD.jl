@@ -61,7 +61,7 @@ function als_optimize(
     projectors = Vector{Vector{Int}}()
     targets = Vector{ITensor}()
     piv_id = nothing
-    for i in inds(target)
+    for (i, n) in zip(inds(target), 1:length(cp))
         Ris = uniqueinds(target, i)
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
         _, _, p = qr(Tmat, ColumnNorm())
@@ -69,10 +69,12 @@ function als_optimize(
 
         dRis = dim(Ris)
         int_end = stop(alg)
+        int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
         int_end = iszero(int_end) ? dRis : int_end
         int_end = dRis < int_end ? dRis : int_end
 
         int_start = start(alg)
+        int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
         @assert int_start > 0 && int_start ≤ int_end
 
         ndim = int_end - int_start + 1
