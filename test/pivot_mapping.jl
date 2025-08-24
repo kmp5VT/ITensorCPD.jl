@@ -51,4 +51,36 @@ using ITensorCPD: column_to_multi_coords
         @test T_matrix[c_idx, pivot_idx] == T[abd_coord[1], abd_coord[2], c_idx, abd_coord[3]]
       end
     end
+
+    ### TODO add a test to compare had_contract
+    i,j = Index.((100,150))
+    m = Index(20, "had")
+
+    A = random_itensor(i,m)
+    B = random_itensor(j,m)
+    exact_had = had_contract(A,B, m)
+
+    p = [x for x in 1:100*150]
+    l = Index(length(p), "Piv")
+    P = itensor(NDTensors.tensor(Diag(p), (i,j,l,)))
+
+    pivs = ITensorCPD.column_to_multi_coords(data(P), dim.((i,j)))
+    sampled_had = Array{eltype(B)}(undef, (dim(l), dim(m)))
+    for i in 1:dim(l)
+      sampled_had[i,:] = array(exact_had)[pivs[i,1], pivs[i,2], :]
+    end
+
+    @test norm(vec(sampled_had) - exact_had.tensor.storage.data ) ≈ 0.0
+
+    p = [rand(1:100*150) for x in 1:40]
+    l = Index(length(p), "Piv")
+    P = itensor(NDTensors.tensor(Diag(p), (i,j,l,)))
+
+    pivs = ITensorCPD.column_to_multi_coords(data(P), dim.((i,j)))
+    sampled_had = Array{eltype(B)}(undef, (dim(l), dim(m)))
+    for i in 1:dim(l)
+      sampled_had[i,:] = array(exact_had)[pivs[i,1], pivs[i,2], :]
+    end
+
+    @test norm(array(ITensorCPD.pivot_hadamard(A, B, m, P)) - sampled_had) ≈ 0.0
 end
