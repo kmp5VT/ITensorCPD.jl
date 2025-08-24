@@ -17,17 +17,19 @@ end
 function column_to_multi_coords(col_indices, dims)
     # col_indices: column pivot indices of matrix reshaped from tensor
     # dims: dimension for residual modes (b,c,d...)
-    coords = []
-    for col_idx in col_indices
+    num_samples = length(col_indices)
+    coords = similar(col_indices, (num_samples, length(dims)))
+
+    for (col_idx, i) in zip(col_indices, 1:num_samples)
         linear_idx = col_idx - 1
-        coord = []
+        coord = Vector{Int}()
         remaining = linear_idx
         
         for dim in dims
             push!(coord, (remaining % dim) + 1)
             remaining = remaining ÷ dim
         end
-        push!(coords, tuple(coord...))
+        coords[i,:] = coord
     end
     return coords
 end

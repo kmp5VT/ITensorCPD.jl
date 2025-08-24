@@ -22,7 +22,7 @@ using ITensorCPD: column_to_multi_coords
     for p in eachindex(pivot_columns)
       pivot_idx = pivot_columns[p]
       for a_idx in 1:i
-        bc_coord = bc_coordinates[p]
+        bc_coord = bc_coordinates[p,:]
         @test  T_matrix[a_idx, pivot_idx] == T[a_idx, bc_coord...]
       end
     end
@@ -44,11 +44,10 @@ using ITensorCPD: column_to_multi_coords
     col_dims = (i,j,l);
     abd_coordinates = column_to_multi_coords(pivot_columns, col_dims);
 
-    flag = 0
     for p in eachindex(pivot_columns)
       pivot_idx = pivot_columns[p]
       for c_idx in 1:k
-        abd_coord = abd_coordinates[p]
+        abd_coord = abd_coordinates[p,:]
         @test T_matrix[c_idx, pivot_idx] == T[abd_coord[1], abd_coord[2], c_idx, abd_coord[3]]
       end
     end

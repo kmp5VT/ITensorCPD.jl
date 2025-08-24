@@ -196,3 +196,15 @@ function optimal_had_contraction_sequence(network::ITensorNetwork, had::Index; a
 
     return ITensorNetworks.contraction_sequence(slice_0; alg)
 end
+## This function is going to compute the hadamard product over one mode and only a set over the other modes.
+## We do require A and B be matrices but only one mode must match. (i.e. this is a sampled khatri-rao product)
+function pivot_hadamard(A::ITensor, B::ITensor, had::Index, pivots::ITensor)
+    @assert NDTensors.datatype(A) == NDTensors.datatype(B)
+    if had ∉ commoninds(A, B)
+        return A * B
+    end
+
+    npivs = column_to_multi_coords(data(pivots), dim.((j,k)))
+
+    return itensor((array(A)[npivs[:,1], :] .* array(B)[npivs[:,2], :]), inds(pivots)[end], had)
+end
