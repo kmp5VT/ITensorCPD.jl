@@ -211,3 +211,20 @@ function pivot_hadamard(A::ITensor, B::ITensor, had::Index, pivots::ITensor)
 
     return itensor((array(A)[npivs[:,1], :] .* array(B)[npivs[:,2], :]), inds(pivots)[end], had)
 end
+
+function pivot_hadamard(tensors::Vector{<:ITensor}, had::Index, pivots::ITensor)
+    for tensor in tensors
+        @assert had == ind(tensor, 2)
+    end
+
+    ## Right now assume only one common ind.
+    is = [commonind(pivots,x) for x in tensors]
+
+    npivs = column_to_multi_coords(data(pivots), dim.(is))
+    prod = ones(size(npivs)[1], dim(had))
+    for (tensor, i) in zip(tensors, 1:length(tensors))
+        prod .*= array(tensor)[npivs[:,i], :]
+    end
+    
+    return itensor(prod, inds(pivots)[end], had)
+end

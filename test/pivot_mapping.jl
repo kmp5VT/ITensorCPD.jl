@@ -83,4 +83,21 @@ using ITensorCPD: column_to_multi_coords
     end
 
     @test norm(array(ITensorCPD.pivot_hadamard(A, B, m, P)) - sampled_had) ≈ 0.0
+
+    @test norm(ITensorCPD.pivot_hadamard([A, B], m, P)  - ITensorCPD.pivot_hadamard(A, B, m, P)) ≈ 0.0
+
+    k = Index(200)
+    C = random_itensor(k,m)
+    exact_had = had_contract([A,B,C], m)
+
+    p = [rand(1:100*150*200) for x in 1:200]
+    l = Index(length(p), "Piv")
+    P = itensor(NDTensors.tensor(Diag(p), (i,j,k,l,)))
+
+    pivs = ITensorCPD.column_to_multi_coords(data(P), dim.((i,j,k)))
+    sampled_had = Array{eltype(B)}(undef, (dim(l), dim(m)))
+    for i in 1:dim(l)
+      sampled_had[i,:] = array(exact_had)[pivs[i,1], pivs[i,2], pivs[i,3], :]
+    end
+    norm(sampled_had - array(ITensorCPD.pivot_hadamard([A, B, C], m, P))) ≈ 0.0
 end
