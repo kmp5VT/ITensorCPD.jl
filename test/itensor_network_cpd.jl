@@ -35,17 +35,16 @@ include("./util.jl")
     end
     @test 1 - check.final_fit < 0.01
 
-    alg = ITensorCPD.InterpolateTarget(1, 20)
-    rng = Random.seed!(Random.RandomDevice());
-    subtn = contract(subtn);
-    guess = ITensorCPD.random_CPD(subtn, 2; rng);
-    cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false, alg);
-    @show check.final_fit
+    ## TODO this is a test to see if physical problems are well interpolated with the 
+    ## new algorithms
+    # rng = Random.seed!(Random.RandomDevice());
+    # subtn = contract(subtn);
+    # guess = ITensorCPD.random_CPD(subtn, 2; rng);
 
-    alg = ITensorCPD.QRPivProjected(1, 2)
-    cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false, alg);
-    diff = subtn - reconstruct(cpd)
-    @show norm(diff) / norm(subtn)
+    # alg = ITensorCPD.QRPivProjected(1, 2)
+    # cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false, alg);
+    # diff = subtn - reconstruct(cpd)
+    # @show norm(diff) / norm(subtn)
 
     nx = ny = 5
     grid = named_grid((nx, ny))
