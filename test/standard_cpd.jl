@@ -33,7 +33,7 @@
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct())
     @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-7
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose=true);
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose=false);
     @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
 
     svd_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.TargetDecomp(), check);
@@ -66,7 +66,7 @@
     opt_A = ITensorCPD.als_optimize(A, cp_A; check=ITensorCPD.FitCheck(1e-3, 100, norm(A)), verbose=true);
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check=ITensorCPD.NoCheck(9));
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check=ITensorCPD.NoCheck(20));
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.01
 end
 
@@ -121,7 +121,7 @@ end
     r = Index(400, "CP_rank")
     A = random_itensor(elt, i, j, k)
 
-    opt_A = ITensorCPD.decompose(A, 1e-3, 400; check=ITensorCPD.FitCheck(1e-4, 100, norm(A)), start_rank = 200, rank_step = 200, verbose=true);
+    opt_A = ITensorCPD.decompose(A, 1e-3, 400; check=ITensorCPD.FitCheck(1e-4, 100, norm(A)), start_rank = 200, rank_step = 200, verbose=false);
     
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-3
 

@@ -117,8 +117,7 @@ function project_target(::InvKRP, als, factors, cp, rank::Index, fact::Int, krp)
 end
 
 function solve_ls_problem(::InvKRP, projected_KRP, projected_target, rank)
-    rank = inds(projected_KRP)[end]
-    U, S, V = svd(projected_KRP, rank; use_absolute_cutoff = true, cutoff = 0)
+    U, S, V = svd(dag(projected_KRP), rank; use_absolute_cutoff = true, cutoff = 0)
     return (U * (prime(projected_target; tags = tags(rank)) * V * (1 ./ S)))
 end
 
