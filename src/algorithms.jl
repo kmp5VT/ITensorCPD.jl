@@ -88,13 +88,18 @@ start(::QRPivProjected{N}) where {N} = N
 stop(::QRPivProjected{N,M}) where {N,M} = M
 
 function project_krp(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
-    krp = had_contract([als.additional_items[:projects_tensors][fact], factors...], rank);
-    return krp * prime(krp; tags = tags(rank))
+    krp_piv = ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
+    return krp_piv
 end
 
-function project_target(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
-    krp = had_contract([als.additional_items[:projects_tensors][fact], factors...], rank);
-    return als.additional_items[:target_transform][fact] * krp
+function project_target(::QRPivProjected, als, factors, cp, rank::Index, fact::Int, krp)
+    return als.additional_items[:target_transform][fact]
+end
+
+function solve_ls_problem(::QRPivProjected, projected_KRP, project_target, rank)
+    direction = array(projected_KRP) \ transpose(array(project_target))
+    i = ind(project_target, 1)
+    return itensor(copy(transpose(direction)), i,rank)
 end
 
 function post_solve(::QRPivProjected, als, factors, λ, cp, rank::Index, fact::Integer) end
@@ -107,8 +112,14 @@ struct InvKRP <: ProjectionAlgorithm end
 function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
     return had_contract(factors, rank)
 end
-function project_target(::InvKRP, als, factors, cp, rank::Index, fact::Int)
+function project_target(::InvKRP, als, factors, cp, rank::Index, fact::Int, krp)
     return als.additional_items[:target_transform][fact]
+end
+
+function solve_ls_problem(::InvKRP, projected_KRP, projected_target, rank)
+    rank = inds(projected_KRP)[end]
+    U, S, V = svd(projected_KRP, rank; use_absolute_cutoff = true, cutoff = 0)
+    return (U * (prime(projected_target; tags = tags(rank)) * V * (1 ./ S)))
 end
 
 function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end

@@ -1,4 +1,5 @@
 using LinearAlgebra: ColumnNorm, diagm
+using ITensors.NDTensors:Diag
 abstract type CPDOptimizer end
 
 struct ALS <: CPDOptimizer
@@ -58,14 +59,15 @@ function als_optimize(
     check = nothing,
     verbose = false,
 )
-    projectors = Vector{Vector{Int}}()
+    pivots = Vector{Vector{Int}}()
+    projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
     piv_id = nothing
     for (i, n) in zip(inds(target), 1:length(cp))
         Ris = uniqueinds(target, i)
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
         _, _, p = qr(Tmat, ColumnNorm())
-        push!(projectors, p)
+        push!(pivots, p)
 
         dRis = dim(Ris)
         int_end = stop(alg)
@@ -78,26 +80,19 @@ function als_optimize(
         @assert int_start > 0 && int_start ≤ int_end
 
         ndim = int_end - int_start + 1
-        t = zeros(eltype(Tmat), (dRis, ndim))
-        j = 1
-        for i = int_start:int_end
-            t[p[i], j] = 1
-            j += 1
-        end
         piv_id = Index(ndim, "pivot")
-        push!(targets, itensor(t, Ris, piv_id));
+
+        push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
+        TP = similar(target, (i, piv_id))
+        for idx in int_start:int_end
+            array(TP)[:,idx] = Tmat[:,p[idx]]
+        end
+    push!(targets, TP)
     end
-    extra_args[:projects] = projectors
-    extra_args[:projects_tensors] = targets
-    extra_args[:target_transform] = [noprime(target * x) for x in targets]
+    extra_args[:projects] = pivots
+    extra_args[:projects_tensors] = projectors
+    extra_args[:target_transform] = targets
     
-    # for (x, t) in zip(extra_args[:target_transform], extra_args[:projects_tensors])
-    #     i = ind(x, 1)
-    #     Ris = uniqueinds(target, i)
-    #     piv_id = ind(x,2)
-    #     v = x * itensor(t.tensor.storage.data, Ris, piv_id)
-    #     @show(norm(v - target) / norm(target))
-    # end
     # return ALS(target, alg, extra_args, check)
     return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
 end
@@ -251,13 +246,12 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
             # #### This is the first KRP * Singular values of T: [(J x K) V]  
             factor_portion = factors[1:end .!= fact]
             projected_KRP = project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
+            
             projected_target =
-                project_target(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
+                project_target(als.mttkrp_alg, als, factor_portion, cp, rank, fact, projected_KRP)
 
-            # mtkrp = projected_KRP * als.additional_items[:target_transform][fact];
             # ##### Now contract TV by the inverse of KRP * SVD
-            U, S, V = svd(projected_KRP, rank; use_absolute_cutoff = true, cutoff = 0)
-            direction = (U * (prime(projected_target; tags = tags(rank)) * V * (1 ./ S)))
+            direction = solve_ls_problem(als.mttkrp_alg, projected_KRP, projected_target, rank)
 
             factors[fact], λ = row_norm(direction, target_ind)
         end
