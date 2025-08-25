@@ -1,4 +1,4 @@
-using NDTensors, ITensors
+using ITensors, ITensors.NDTensors
 using ITensorCPD: column_to_multi_coords
 # TEST 1
 @testset "Check Pivot Map function" begin
