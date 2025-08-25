@@ -256,9 +256,9 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
             factors[fact], λ = row_norm(direction, target_ind)
         end
 
-        recon = reconstruct(factors, λ)
-        diff = als.target - recon
-        println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
+        # recon = reconstruct(factors, λ)
+        # diff = als.target - recon
+        # println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
         iter += 1
     end
 
