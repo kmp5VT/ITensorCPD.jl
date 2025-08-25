@@ -79,8 +79,9 @@ struct QRPivProjected{Start,End} <: MttkrpAlgorithm end
 
 ## TODO modify to use ranges 
 QRPivProjected() = QRPivProjected{(1,),(0,)}()
-QRPivProjected(n) = QRPivProjected{(1,),(n,)}()
+QRPivProjected(n::Int) = QRPivProjected{(1,),(n,)}()
 QRPivProjected(n::Int, m::Int) = QRPivProjected{(n,),(m,)}()
+QRPivProjected(n::Tuple) = QRPivProjected{Tuple(Int.(ones(length(n)))),n}()
 QRPivProjected(n::Tuple, m::Tuple) = QRPivProjected{n,m}()
 
 start(::QRPivProjected{N}) where {N} = N
