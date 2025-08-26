@@ -2,6 +2,12 @@ using ITensors: ITensor, Index
 using TensorOperations
 using ITensorNetworks: ITensorNetworks, ITensorNetwork
 
+## This is a specialized tensor product which combines the hadamard product with other tensor
+## operations. Here we assume A and B both have a matching mode `had` and this mode will 
+## be preserved in tensor result. For each value of the common mode, there is a subnewtork 
+## contraction problem which we resolve efficiently in place. In the future this is a point of
+## parallelization.
+## for example C(i,k,r) = α * A(i,j,r) * B(j,r,k) = ∀ rᵢ C_rᵢ(i,k) = α * A_rᵢ(i,j) B_rᵢ(j,k)
 function had_contract(A::ITensor, B::ITensor, had::Index; α = true)
     @assert NDTensors.datatype(A) == NDTensors.datatype(B)
     dataT = NDTensors.datatype(A)
@@ -35,6 +41,13 @@ function had_contract(A::ITensor, B::ITensor, had::Index; α = true)
 end
 
 ## TODO this is broken when some items have a rank but others do not.
+## This is a specialized tensor product which combines the hadamard product with other tensor
+## operations like the definition before. In this we contract a collection of tensors 
+## and we do not require all tensors share the common index `had`. Any tensor that does not
+## share this common index will be effectively replicated for every subnetwork contraction.
+## for example D(i,k,r) = A(i,j,r) * B(j,r,k) C(k,l) = ∀ rᵢ D_rᵢ(i,l) = (A_rᵢ(i,j) B_rᵢ(j,k)) C(k,l)
+## The variable `sequence` can be provided to specify the contraction sequence of the subnetwork problems.
+## if sequence == nothing then the optimal path will be computed.
 function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequence = nothing)
     had_tensors = Vector{Int}() 
     no_had = Vector{Int}() 
@@ -89,6 +102,8 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
     return C
 end
 
+## This function computes the optimal hadamard_contraction sequence for a collection of tensors provided to 
+## it as a list of itensors
 function optimal_had_contraction_sequence(tensors::Vector{<:ITensor}, had::Index)
     had_tensors = Vector{Int}() 
     no_had = Vector{Int}() 
@@ -115,6 +130,13 @@ function optimal_had_contraction_sequence(tensors::Vector{<:ITensor}, had::Index
     return ITensors.optimal_contraction_sequence(slice_0)
 end
 
+## This is a specialized tensor product which combines the hadamard product with other tensor
+## operations like the definition before. In this we contract a collection of tensors 
+## and we do not require all tensors share the common index `had`. Any tensor that does not
+## share this common index will be effectively replicated for every subnetwork contraction.
+## for example D(i,k,r) = A(i,j,r) * B(j,r,k) C(k,l) = ∀ rᵢ D_rᵢ(i,l) = (A_rᵢ(i,j) B_rᵢ(j,k)) C(k,l)
+## The variable `sequence` can be provided to specify the contraction sequence of the subnetwork problems.
+## if sequence == nothing then the optimal path will be computed.
 function had_contract(
     network::ITensorNetwork,
     had::Index;
@@ -170,6 +192,8 @@ function had_contract(
     return C
 end
 
+## This function computes the optimal hadamard_contraction sequence for a collection of tensors provided to 
+## it as an ITensorNetwork
 function optimal_had_contraction_sequence(network::ITensorNetwork, had::Index; alg = nothing)
     alg = isnothing(alg) ? "optimal" : alg
 
@@ -197,8 +221,16 @@ function optimal_had_contraction_sequence(network::ITensorNetwork, had::Index; a
     return ITensorNetworks.contraction_sequence(slice_0; alg)
 end
 
-## This function is going to compute the hadamard product over one mode and only a set over the other modes.
-## We do require A and B be matrices but only one mode must match. (i.e. this is a sampled khatri-rao product)
+## This function is special tensor product derived from the khatri-rao product
+## each tensor must be a matrix with one matching mode. The hadamard product
+## will be computed over the common mode. Canonically the outer product of the 
+## other modes would be computed to compute the hadamard product.
+## i.e. C(i,j,r) = A(i,r) ⊙ B(j,r). 
+## This operation can be mapped to the contraction with a ij x ij identity matrix
+## C(i,j,r) = I(i,j, i',j') A(i',r) B(j',r)
+## This function computes a portion of this tensor product by providing a list 
+## entries in this identity matrix via the tensor `pivots`
+## we assume pivots gives the value of the combined `ij` index
 function pivot_hadamard(A::ITensor, B::ITensor, had::Index, pivots::ITensor)
     @assert NDTensors.datatype(A) == NDTensors.datatype(B)
     @assert (had ∈ commoninds(A, B) )
@@ -212,6 +244,9 @@ function pivot_hadamard(A::ITensor, B::ITensor, had::Index, pivots::ITensor)
     return itensor((array(A)[npivs[:,1], :] .* array(B)[npivs[:,2], :]), inds(pivots)[end], had)
 end
 
+## This function is special tensor product derived from the khatri-rao product
+## each tensor must be a matrix with one matching mode. See above for a full description.
+## This function works for a list of tensors to be fused via the Khatri-Rao product.
 function pivot_hadamard(tensors::Vector{<:ITensor}, had::Index, pivots::ITensor)
     for tensor in tensors
         @assert had == ind(tensor, 2)
