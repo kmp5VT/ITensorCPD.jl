@@ -51,7 +51,7 @@ function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
   stride = strides(T.tensor)[k]
   pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), NDTensors.data(pivots))
   for i in 1:dim(idx)
-    array(As)[i,:] .= @view v[pos .+ mk * (i - 1)]
+    array(As)[i,:] .= @view v[pos .+ stride * (i - 1)]
   end
   return As
 end
