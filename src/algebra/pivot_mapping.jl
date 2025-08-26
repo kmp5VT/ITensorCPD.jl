@@ -37,22 +37,20 @@ end
 ## α is the sampled index from the matricized tensor
 ## sizes are the dimensions of the tensor and 
 ## k is the mode being flattened.
-function transform_alpha_to_vectorized_tensor_position(α, sizes, k)::Int
-  @assert k ≤ length(sizes)
-  mk = prod(sizes[1:k-1])
-  T = floor((α-1) / mk)
-  return T * mk * sizes[k] + (α - T * mk)
+function transform_alpha_to_vectorized_tensor_position(α, extent, stride)::Int
+  T = floor((α-1) / stride)
+  return T * stride * extent + (α - T * stride)
 end
 
 ## This function will take a higher-order tensor and a list of pivots
 ## and matricizes it along the `k`the dimension returning a matrix of size dim(k) x num_samples
 function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
-  sizes = size(T)
   v = vec(NDTensors.data(T))
-  As = similar(T, (ind(T, k), inds(pivots)[end]))
-  mk = prod(sizes[1:k-1])
-  pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, sizes, k), NDTensors.data(pivots))
-  for i in 1:sizes[k]
+  idx = ind(T, k)
+  As = similar(T, (idx, inds(pivots)[end]))
+  stride = strides(T.tensor)[k]
+  pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), NDTensors.data(pivots))
+  for i in 1:dim(idx)
     array(As)[i,:] .= @view v[pos .+ mk * (i - 1)]
   end
   return As
