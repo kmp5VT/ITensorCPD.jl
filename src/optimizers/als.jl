@@ -82,10 +82,7 @@ function als_optimize(
         piv_id = Index(ndim, "pivot")
 
         push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
-        TP = similar(target, (i, piv_id))
-        for idx in int_start:int_end
-            array(TP)[:,idx] = Tmat[:,p[idx]]
-        end
+        TP = fused_flatten_sample(target, n, projectors[n])
     push!(targets, TP)
     end
     extra_args[:projects] = pivots
