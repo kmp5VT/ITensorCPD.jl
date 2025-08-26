@@ -47,7 +47,6 @@ function als_optimize(
     check = nothing,
     verbose = false,
 )
-    extra_args[:target_transform] = [target for i in inds(target)]
     return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
 end
 

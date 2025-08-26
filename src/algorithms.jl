@@ -113,7 +113,7 @@ function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
     return had_contract(factors, rank)
 end
 function project_target(::InvKRP, als, factors, cp, rank::Index, fact::Int, krp)
-    return als.additional_items[:target_transform][fact]
+    return als.target
 end
 
 function solve_ls_problem(::InvKRP, projected_KRP, projected_target, rank)
