@@ -1,9 +1,10 @@
 using LinearAlgebra: ColumnNorm, diagm
+using ITensors.NDTensors:Diag
 abstract type CPDOptimizer end
 
 struct ALS <: CPDOptimizer
     target::Any
-    mttkrp_alg::MttkrpAlgorithm
+    mttkrp_alg::Union{MttkrpAlgorithm,ProjectionAlgorithm}
     additional_items::Dict
     check::ConvergeAlg
 end
@@ -17,21 +18,101 @@ function als_optimize(
     verbose = false,
 )
     alg = isnothing(alg) ? direct() : alg
+    extra_args = Dict();
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
     mttkrp_contract_sequences = Vector{Union{Any,Nothing}}()
     for l in inds(target)
         push!(mttkrp_contract_sequences, nothing)
     end
-    return optimize(
-        cp,
-        ALS(
-            target,
-            alg,
-            Dict(:mttkrp_contract_sequences => mttkrp_contract_sequences),
-            check,
-        );
-        verbose,
-    )
+    extra_args[:mttkrp_contract_sequences] = mttkrp_contract_sequences
+    als_optimize(alg, target, cp; extra_args, check, verbose)
+end
+
+function als_optimize(
+    alg::MttkrpAlgorithm,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    verbose = false,
+)
+    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
+end
+
+function als_optimize(
+    alg::InvKRP,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    verbose = false,
+)
+    return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
+end
+
+function als_optimize(
+    alg::QRPivProjected,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    verbose = false,
+)
+    pivots = Vector{Vector{Int}}()
+    projectors = Vector{ITensor}()
+    targets = Vector{ITensor}()
+    piv_id = nothing
+    for (i, n) in zip(inds(target), 1:length(cp))
+        Ris = uniqueinds(target, i)
+        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
+        _, _, p = qr(Tmat, ColumnNorm())
+        push!(pivots, p)
+
+        dRis = dim(Ris)
+        int_end = stop(alg)
+        int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
+        int_end = iszero(int_end) ? dRis : int_end
+        int_end = dRis < int_end ? dRis : int_end
+
+        int_start = start(alg)
+        int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
+        @assert int_start > 0 && int_start ≤ int_end
+
+        ndim = int_end - int_start + 1
+        piv_id = Index(ndim, "pivot")
+
+        push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
+        TP = fused_flatten_sample(target, n, projectors[n])
+    push!(targets, TP)
+    end
+    extra_args[:projects] = pivots
+    extra_args[:projects_tensors] = projectors
+    extra_args[:target_transform] = targets
+    
+    # return ALS(target, alg, extra_args, check)
+    return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
+end
+
+function als_optimize(
+    alg::TargetDecomp,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    verbose = false,
+)
+    decomps = Vector{ITensor}()
+    targets = Vector{ITensor}()
+    for i in inds(target)
+        u, s, v = svd(target, i; use_relative_cutoff = false, cutoff = 0)
+        push!(decomps, v)
+        t = u * s
+        push!(targets, t);
+    end
+    extra_args[:target_decomps] = decomps
+    extra_args[:target_transform] = targets
+
+    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
 function als_optimize(
@@ -138,6 +219,42 @@ function optimize(cp::CPD, als::ALS; verbose = true)
         if check_converge(converge, factors, λ, part_grammian; verbose)
             break
         end
+        iter += 1
+    end
+
+    return CPD{typeof(als.target)}(factors, λ)
+end
+
+function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
+    rank = cp_rank(cp)
+    iter = 0
+
+    λ = copy(cp.λ)
+    factors = copy(cp.factors)
+
+    converge = als.check
+    target_inds = inds(als.target)
+
+    while iter < converge.max_counter
+        for fact = 1:length(cp)
+            target_ind = target_inds[fact]
+            # ### Trying to solve T V = I [(J x K) V] 
+            # #### This is the first KRP * Singular values of T: [(J x K) V]  
+            factor_portion = factors[1:end .!= fact]
+            projected_KRP = project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
+            
+            projected_target =
+                project_target(als.mttkrp_alg, als, factor_portion, cp, rank, fact, projected_KRP)
+
+            # ##### Now contract TV by the inverse of KRP * SVD
+            direction = solve_ls_problem(als.mttkrp_alg, projected_KRP, projected_target, rank)
+
+            factors[fact], λ = row_norm(direction, target_ind)
+        end
+
+        # recon = reconstruct(factors, λ)
+        # diff = als.target - recon
+        # println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
         iter += 1
     end
 

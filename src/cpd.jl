@@ -17,6 +17,7 @@ end
 factors(cp::CPD) = getproperty(cp, :factors)
 ITensors.inds(cp::CPD) = getproperty(cp, :inds)
 ITensors.ind(cp::CPD, i::Int) = inds(cp)[i]
+ITensors.itensor2inds(A::CPD)::Any = inds(A)
 paramT(cp::CPD{T}) where {T} = T
 Base.length(cp::CPD) = length(cp.factors)
 

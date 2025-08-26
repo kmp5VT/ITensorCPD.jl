@@ -2,6 +2,8 @@ using ITensors: Index
 using ITensors.NDTensors: data
 
 abstract type MttkrpAlgorithm end
+abstract type ProjectionAlgorithm end
+
 struct KRP <: MttkrpAlgorithm end
 
 ## This version assumes we have the exact target and can form the tensor
@@ -41,6 +43,85 @@ function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
 end
 
 function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+### This solver is slightly silly. It takes a higher-order tensor T forms the SVD of every unfolding
+### for example T(a,b,c) => T(a,bc) => U(a,r) S(r,rp) V(rp,bc). We use this decomposition to represent T as
+### T(a,b'c') V(r,b'c') V(r,bc). Then we solve f(A) = || T(a,b'c') V(r,b'c') V(r,bc) - A(a,m) (B(b,m) ⊙ C(c,m)) ||².
+### We repeat this process for every factor matrix. This gains us a smaller target tensor to store,
+### i.e. (U(a,r) S(r,rp)) for each mode but solving the least squares problem is no less expensive.
+
+struct TargetDecomp <: MttkrpAlgorithm end
+
+function mttkrp(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
+    factor_portion = factors[1:end .!= fact]
+    m = had_contract(
+        [
+            als.additional_items[:target_transform][fact],
+            als.additional_items[:target_decomps][fact],
+            dag.(factor_portion)...,
+        ],
+        rank;
+    )
+
+    return m
+end
+
+function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+
+
+### With this solver we are trying to solve the modified least squares problem
+### || T(a,b,c) P(b,c,l) - A(a,m) (B(b,m) ⊙ C(c,m)) P(b,c,l) ||² (and equivalent for all other factor matrices)
+### In order to solve this equation we need the following to be true P(b,c l) P(b',c', l) ≈ I(b,c,b',c')
+### One easy way to do this is to make P a pivot matrix from a QR or LU. We will form P by taking the pivoted QR
+### of T and choose a set certain number of pivots in each row.
+struct QRPivProjected{Start,End} <: MttkrpAlgorithm end
+
+## TODO modify to use ranges 
+QRPivProjected() = QRPivProjected{(1,),(0,)}()
+QRPivProjected(n::Int) = QRPivProjected{(1,),(n,)}()
+QRPivProjected(n::Int, m::Int) = QRPivProjected{(n,),(m,)}()
+QRPivProjected(n::Tuple) = QRPivProjected{Tuple(Int.(ones(length(n)))),n}()
+QRPivProjected(n::Tuple, m::Tuple) = QRPivProjected{n,m}()
+
+start(::QRPivProjected{N}) where {N} = N
+stop(::QRPivProjected{N,M}) where {N,M} = M
+
+function project_krp(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
+    krp_piv = ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
+    return krp_piv
+end
+
+function project_target(::QRPivProjected, als, factors, cp, rank::Index, fact::Int, krp)
+    return als.additional_items[:target_transform][fact]
+end
+
+function solve_ls_problem(::QRPivProjected, projected_KRP, project_target, rank)
+    direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+    i = ind(project_target, 1)
+    return itensor(copy(transpose(direction)), i,rank)
+end
+
+function post_solve(::QRPivProjected, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+
+## This solver does not form the normal equations. 
+## We simply compute the khatri rao product and directly compute Ax=B for each least squres problem.
+struct InvKRP <: ProjectionAlgorithm end
+
+function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
+    return had_contract(factors, rank)
+end
+function project_target(::InvKRP, als, factors, cp, rank::Index, fact::Int, krp)
+    return als.target
+end
+
+function solve_ls_problem(::InvKRP, projected_KRP, projected_target, rank)
+    U, S, V = svd(dag(projected_KRP), rank; use_absolute_cutoff = true, cutoff = 0)
+    return (U * (prime(projected_target; tags = tags(rank)) * V * (1 ./ S)))
+end
+
+function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 ################
 ## This solver is based on ITensorNetwork
