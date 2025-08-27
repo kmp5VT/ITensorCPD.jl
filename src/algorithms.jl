@@ -69,13 +69,50 @@ end
 function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 
+### With this solver we are going to compute sampling projectors for LS decomposition
+### based on the leverage score of the factor matrices. Then we are going to solve a
+### sampled least squares problem 
+
+struct LevScoreSampled{NSamples} <: ProjectionAlgorithm end
+
+LevScoreSampled() = LevScoreSampled{(0,)}()
+LevScoreSampled(n::Int) = LevScoreSampled{(n,)}()
+LevScoreSampled(n::Tuple) = LevScoreSampled{n}()
+
+nsamples(::LevScoreSampled{N}) where {N} = N
+
+## We are going to construct a matrix of sampled indices of the tensor
+function project_krp(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int)
+    nsamps = nsamples(als.mttkrp_alg)
+    nsamps = length(nsamps) == 1 ? nsamps[1] : nsamps[fact]
+
+    sampled_cols = sample_factor_matrices(nsamps, fact, als.additional_items[:factor_weights])
+    ## Write new samples to pivot tensor
+    dRis = dims(inds(cp)[1:end .!= fact])
+    data(als.additional_items[:pivot_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+    
+    return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:pivot_tensors][fact])[end])
+end
+
+function project_target(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int, krp)
+    ## I need to turn this into an ITensor and then pass it to the computed algorithm.
+    return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
+end
+
+function solve_ls_problem(::LevScoreSampled, projected_KRP, project_target, rank)
+    direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+    i = ind(project_target, 1)
+    return itensor(copy(transpose(direction)), i,rank)
+end
+
+function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 ### With this solver we are trying to solve the modified least squares problem
 ### || T(a,b,c) P(b,c,l) - A(a,m) (B(b,m) ⊙ C(c,m)) P(b,c,l) ||² (and equivalent for all other factor matrices)
 ### In order to solve this equation we need the following to be true P(b,c l) P(b',c', l) ≈ I(b,c,b',c')
 ### One easy way to do this is to make P a pivot matrix from a QR or LU. We will form P by taking the pivoted QR
 ### of T and choose a set certain number of pivots in each row.
-struct QRPivProjected{Start,End} <: MttkrpAlgorithm end
+struct QRPivProjected{Start,End} <: ProjectionAlgorithm end
 
 ## TODO modify to use ranges 
 QRPivProjected() = QRPivProjected{(1,),(0,)}()

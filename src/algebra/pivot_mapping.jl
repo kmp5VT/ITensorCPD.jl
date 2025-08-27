@@ -39,7 +39,7 @@ end
 ## sizes is a tuple of indices for the modes of the factor matrices.
 ## pivots is a matrix of where the first mode is the number of samples and the 
 ## second mode is the number of matrices being sampled.
-function multi_coords_to_column(sizes::Tuple, pivots::Matrix)
+function multi_coords_to_column(sizes::Union{<:Tuple,<:Vector}, pivots::Matrix)
   strides = [prod(sizes[1:end-s]) for s in 1:length(sizes)]
   npivots = size(pivots)[1]
   indices = [pivots[v,:] for v in 1:npivots]
