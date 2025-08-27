@@ -68,6 +68,29 @@
     int_opt_A =
         als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check=ITensorCPD.NoCheck(20));
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.01
+
+    ### Test for Leverage score sampling CPD 
+    a,b,c = Index.((12,13,3))
+    T = random_itensor(a,b,c)
+
+    cpdT = random_CPD(T, 5)
+    T = reconstruct(cpdT)
+
+    cpd = random_CPD(T, 5)
+    alg = ITensorCPD.LevScoreSampled(100)
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg);
+    norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
+
+    ### Test for Leverage score sampling CPD 
+    alg = ITensorCPD.LevScoreSampled((50, 50, 500))
+    min_val = 1
+    for i in 1:3
+        cpd_opt = ITensorCPD.als_optimize(T, cpd; alg);
+        val = norm(reconstruct(cpd_opt) - T) / norm(T) 
+        @show val
+        min_val = val < min_val ? val : val
+    end
+     @test min_val < 0.1
 end
 
 @testset "Standard CPD, elt=$elt" for elt in [Float32, ComplexF32]
