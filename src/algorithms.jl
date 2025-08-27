@@ -105,7 +105,10 @@ function solve_ls_problem(::LevScoreSampled, projected_KRP, project_target, rank
     return itensor(copy(transpose(direction)), i,rank)
 end
 
-function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) end
+function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
+## update the factor weights.
+    als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact))
+end
 
 ### With this solver we are trying to solve the modified least squares problem
 ### || T(a,b,c) P(b,c,l) - A(a,m) (B(b,m) ⊙ C(c,m)) P(b,c,l) ||² (and equivalent for all other factor matrices)
