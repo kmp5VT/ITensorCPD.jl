@@ -110,6 +110,55 @@ function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::
     als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact))
 end
 
+### With this solver we are going to compute sampling projectors for LS decomposition
+### based on the leverage score of the factor matrices. Then we are going to solve a
+### sampled least squares problem. To make the sampling process more efficient this algorithm
+### gathers samples in blocks
+
+struct BlockLevScoreSampled{NSamples, Blocks} <: ProjectionAlgorithm end
+
+BlockLevScoreSampled() = BlockLevScoreSampled{(0,), (1,)}()
+BlockLevScoreSampled(n::Int) = BlockLevScoreSampled{(n,), (1,)}()
+BlockLevScoreSampled(n::Tuple) = BlockLevScoreSampled{n, (1,)}()
+
+BlockLevScoreSampled(n::Int, m::Int) = BlockLevScoreSampled{(n,), (m,)}()
+BlockLevScoreSampled(n::Tuple, m::Tuple) = BlockLevScoreSampled{n, m}()
+
+nsamples(::BlockLevScoreSampled{N}) where {N} = N
+blocks(::BlockLevScoreSampled{N,M}) where {N, M} = M
+
+## We are going to construct a matrix of sampled indices of the tensor
+function project_krp(::BlockLevScoreSampled, als, factors, cp, rank::Index, fact::Int)
+    nsamps = nsamples(als.mttkrp_alg)
+    nsamps = length(nsamps) == 1 ? nsamps[1] : nsamps[fact]
+    block_size = blocks(als.mttkrp_alg)
+    block_size = length(block_size) == 1 ? block_size[1] : block_size[fact]
+
+    size_fast = fact == 1 ? dim(ind(cp, 2)) : dim(ind(cp, 1))
+    sampled_cols = block_sample_factor_matrices(nsamps, als.additional_items[:factor_weights], block_size, fact, size_fast)
+    ## Write new samples to pivot tensor
+    dRis = dims(inds(cp)[1:end .!= fact])
+    data(als.additional_items[:pivot_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+    
+    return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:pivot_tensors][fact])[end])
+end
+
+function project_target(::BlockLevScoreSampled, als, factors, cp, rank::Index, fact::Int, krp)
+    ## I need to turn this into an ITensor and then pass it to the computed algorithm.
+    return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
+end
+
+function solve_ls_problem(::BlockLevScoreSampled, projected_KRP, project_target, rank)
+    direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+    i = ind(project_target, 1)
+    return itensor(copy(transpose(direction)), i,rank)
+end
+
+function post_solve(::BlockLevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
+## update the factor weights.
+    als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact))
+end
+
 ### With this solver we are trying to solve the modified least squares problem
 ### || T(a,b,c) P(b,c,l) - A(a,m) (B(b,m) ⊙ C(c,m)) P(b,c,l) ||² (and equivalent for all other factor matrices)
 ### In order to solve this equation we need the following to be true P(b,c l) P(b',c', l) ≈ I(b,c,b',c')
