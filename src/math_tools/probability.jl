@@ -6,7 +6,7 @@ function compute_leverage_score_probabilitiy(A, row::Index)
   q, _ = qr(A, row)
   ITensors.hadamard_product!(q, q, q)
   ni = dim(q, 1)
-  return [sum(array(q)[i,:]) for i in 1:ni]
+  return [sum(array(q)[i,:])  for i in 1:ni] ./ minimum(dims(A))
 end
 
 function samples_from_probability_vector(PW::Vector, samples)
