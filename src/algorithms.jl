@@ -100,6 +100,7 @@ function project_target(::LevScoreSampled, als, factors, cp, rank::Index, fact::
 end
 
 function solve_ls_problem(::LevScoreSampled, projected_KRP, project_target, rank)
+    # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
     direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
     i = ind(project_target, 1)
     return itensor(copy(transpose(direction)), i,rank)
