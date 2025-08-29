@@ -45,14 +45,14 @@
 
     ## This method uses the interpolative squared to precondition the problem.
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check);
+       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
-          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+         norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (20*40, 20*40, 20*30)), check);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (20*40, 20*40, 20*30)), lst=[1,2,3],check);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
-          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+          norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 
     direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(direct_inversion_opt_A)) /

@@ -1,5 +1,6 @@
-using LinearAlgebra: ColumnNorm, diagm
+using LinearAlgebra: qr,ColumnNorm, diagm, norm
 using ITensors.NDTensors:Diag
+using ITensorCPD: SEQRCS
 abstract type CPDOptimizer end
 
 struct ALS <: CPDOptimizer
@@ -13,6 +14,7 @@ function als_optimize(
     target::ITensor,
     cp::CPD{<:ITensor};
     alg = nothing,
+    lst=Int[],
     check = nothing,
     maxiter = nothing,
     verbose = false,
@@ -25,7 +27,11 @@ function als_optimize(
         push!(mttkrp_contract_sequences, nothing)
     end
     extra_args[:mttkrp_contract_sequences] = mttkrp_contract_sequences
-    als_optimize(alg, target, cp; extra_args, check, verbose)
+    if alg isa QRPivProjected
+        als_optimize(alg, target, cp; lst=lst, extra_args, check, verbose)
+    else
+        als_optimize(alg, target, cp; extra_args, check, verbose)
+    end
 end
 
 function als_optimize(
@@ -54,10 +60,12 @@ function als_optimize(
     alg::QRPivProjected,
     target::ITensor,
     cp::CPD{<:ITensor};
+    lst=Int[],
     extra_args = Dict(),
     check = nothing,
     verbose = false,
 )
+println("Inside QRPivProjected als_optimize, lst = $lst")
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
@@ -65,8 +73,6 @@ function als_optimize(
     for (i, n) in zip(inds(target), 1:length(cp))
         Ris = uniqueinds(target, i)
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
-        _, _, p = qr(Tmat, ColumnNorm())
-        push!(pivots, p)
 
         dRis = dim(Ris)
         int_end = stop(alg)
@@ -77,6 +83,15 @@ function als_optimize(
         int_start = start(alg)
         int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
         @assert int_start > 0 && int_start ≤ int_end
+        if n in lst
+            m = dim(i)
+            l=Int(round(3 * m * log(m))) #sketching dimension
+            s=Int(round(log(m)))
+            _,_,p = SEQRCS(Tmat,l,s,dim(int_end),100)
+        else
+            _, _, p = qr(Tmat, ColumnNorm())
+        end
+        push!(pivots, p)
 
         ndim = int_end - int_start + 1
         piv_id = Index(ndim, "pivot")

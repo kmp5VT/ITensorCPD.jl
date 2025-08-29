@@ -16,7 +16,7 @@ function row_norm(t::ITensor, i...)
         l_array = l_array * d
     end
     return itensor(
-        array(t) ./ array(permute(l_array, inds(t); allow_alias = true)),
+        array(t) ./ array(ITensors.permute(l_array, inds(t); allow_alias = true)),
         inds(t),
     ),
     λ
