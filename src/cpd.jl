@@ -42,7 +42,7 @@ function random_factors(elt::Union{<:Type, Nothing}, is::Indices, rank::Index; r
     cp = Vector{ITensor}([])
     l = nothing
     for i in is
-        it = itensor(NDTensors.randomTensor(elt, (i, rank)))
+        it = random_itensor(rng, i, rank)
         rtensor, l = row_norm(it, i)
         push!(cp, rtensor)
     end
