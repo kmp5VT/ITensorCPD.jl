@@ -1,4 +1,4 @@
-using LinearAlgebra:qr, norm,svd
+using LinearAlgebra
 using ITensorCPD:SEQRCS, sparse_sign_matrix
 
 ### testing the generation of sparse matrix
@@ -25,7 +25,7 @@ end
 @testset "SE-QRCS factorization test" begin
 m,n,k=50,10000,40
 A=randn(m,n)
-F = qr(A,Val(true))
+F = qr(A, ColumnNorm())
 Q_act,R_act,p_act=F.Q,F.R,F.p
 Q,R,p = SEQRCS(A,2500,1,40,40)
 error_act = norm(A[:,p_act]-Q_act[:,1:k]*R_act[1:k,:],2)/norm(A,2)

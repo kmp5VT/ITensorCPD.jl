@@ -1,4 +1,4 @@
-using LinearAlgebra: qr,ColumnNorm, diagm, norm
+using LinearAlgebra:ColumnNorm, diagm
 using ITensors.NDTensors:Diag
 using ITensorCPD: SEQRCS
 abstract type CPDOptimizer end
