@@ -34,6 +34,18 @@ function column_to_multi_coords(col_indices, dims)
     return coords
 end
 
+## This function maps the multi-index data from the factor matricizes
+## back to the columns of the matricized tensor
+## sizes is a tuple of indices for the modes of the factor matrices.
+## pivots is a matrix of where the first mode is the number of samples and the 
+## second mode is the number of matrices being sampled.
+function multi_coords_to_column(sizes::Tuple, pivots::Matrix)
+  strides = [prod(sizes[1:end-s]) for s in 1:length(sizes)]
+  npivots = size(pivots)[1]
+  indices = [pivots[v,:] for v in 1:npivots]
+  return [sum((i[end:-1:1] .- 1) .* strides) + 1 for i in indices]
+end
+
 ## α is the sampled index from the matricized tensor
 ## sizes are the dimensions of the tensor and 
 ## k is the mode being flattened.
