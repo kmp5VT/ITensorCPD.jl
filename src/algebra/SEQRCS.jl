@@ -30,7 +30,7 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int)
     colstarts = Array{Int32}(undef, n+1)
     ccall((
         :sparse_sign,
-        "$(@__DIR__)/libsparse_sign.so"
+        libsparse
         ),
         Cvoid,
         (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),

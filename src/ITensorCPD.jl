@@ -10,4 +10,6 @@ include("optimizers/als.jl")
 include("optimizers/decompose.jl")
 include("reconstruct.jl")
 include("algebra/cp_contract.jl")
+
+libsparse = joinpath(dirname(pathof(ITensorCPD)), "algebra", "libsparse_sign.so")
 end
