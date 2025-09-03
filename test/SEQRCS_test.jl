@@ -23,12 +23,12 @@ end
 
 ### testing the performance of SE-QRCS
 @testset "SE-QRCS factorization test" begin
-m,n,k=50,10000,40
-A=randn(m,n)
-F = qr(A, ColumnNorm())
-Q_act,R_act,p_act=F.Q,F.R,F.p
-Q,R,p = SEQRCS(A,2500,1,40,40)
-error_act = norm(A[:,p_act]-Q_act[:,1:k]*R_act[1:k,:],2)/norm(A,2)
-error = norm(A[:,p]-Q[:,1:k]*R[1:k,:],2)/norm(A,2)
-@test (abs(error - error_act) <= 1e-2)
+    m,n,k=50,10000,40
+    A=randn(m,n)
+    F = qr(A, ColumnNorm())
+    Q_act,R_act,p_act=F.Q,F.R,F.p
+    Q,R,p = SEQRCS(A,2500,1,40,40)
+    error_act = norm(A[:,p_act]-Q_act[:,1:k]*R_act[1:k,:],2)/norm(A,2)
+    error = norm(A[:,p]-Q[:,1:k]*R[1:k,:],2)/norm(A,2)
+    @test (abs(error - error_act) <= 1e-2)
 end
