@@ -88,18 +88,20 @@ QRPivProjected(n::Tuple, m::Tuple) = QRPivProjected{n,m}()
 ### QR method is replaced with a custom algorithm for randomized pivoted QR.
 ### The SEQRCS was developed by Israa Fakih and Laura Grigori (DOI: )
 ### The randomized method is only included for specified modes
-struct SEQRCSPivProjected{Start,End,RandomModes} <: MttkrpAlgorithm end
+struct SEQRCSPivProjected{Start,End} <: MttkrpAlgorithm
+    random_modes::Union{<:Tuple, Nothing}
+end
 
 ## TODO modify to use ranges 
-SEQRCSPivProjected() = SEQRCSPivProjected{(1,),(0,),nothing}()
-SEQRCSPivProjected(n::Int) = SEQRCSPivProjected{(1,),(n,),nothing}()
-SEQRCSPivProjected(n::Int, m::Int) = SEQRCSPivProjected{(n,),(m,),nothing}()
-SEQRCSPivProjected(n::Int, m::Int, mode::Int) = SEQRCSPivProjected{(n,),(m,),(mode,)}()
-SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected{Tuple(Int.(ones(length(n)))),n,nothing}()
-SEQRCSPivProjected(n::Tuple, m::Tuple) = SEQRCSPivProjected{n,m,nothing}()
-SEQRCSPivProjected(n::Tuple, m::Tuple, modes::Tuple) = SEQRCSPivProjected{n,m,modes}()
+SEQRCSPivProjected() = SEQRCSPivProjected{(1,),(0,)}(nothing)
+SEQRCSPivProjected(n::Int) = SEQRCSPivProjected{(1,),(n,)}(nothing)
+SEQRCSPivProjected(n::Int, m::Int) = SEQRCSPivProjected{(n,),(m,)}(nothing)
+SEQRCSPivProjected(n::Int, m::Int, mode::Int) = SEQRCSPivProjected{(n,),(m,)}((mode,))
+SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected{Tuple(Int.(ones(length(n)))),n}(nothing)
+SEQRCSPivProjected(n::Tuple, m::Tuple) = SEQRCSPivProjected{n,m}(nothing)
+SEQRCSPivProjected(n::Tuple, m::Tuple, modes::Tuple) = SEQRCSPivProjected{n,m}(modes)
 
-random_modes(::SEQRCSPivProjected{N,M,Modes}) where {N,M,Modes} = Modes
+random_modes(alg::SEQRCSPivProjected) = alg.random_modes
 ## This is a union class so that the operations work on both pivot based solver algorithms
 const PivotBasedSolvers{N,M} = Union{QRPivProjected{N,M}, SEQRCSPivProjected{N,M}}
 
