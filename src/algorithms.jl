@@ -84,25 +84,44 @@ QRPivProjected(n::Int, m::Int) = QRPivProjected{(n,),(m,)}()
 QRPivProjected(n::Tuple) = QRPivProjected{Tuple(Int.(ones(length(n)))),n}()
 QRPivProjected(n::Tuple, m::Tuple) = QRPivProjected{n,m}()
 
-start(::QRPivProjected{N}) where {N} = N
-stop(::QRPivProjected{N,M}) where {N,M} = M
+### This solver is nearly identical to the one above. The major difference is that the 
+### QR method is replaced with a custom algorithm for randomized pivoted QR.
+### The SEQRCS was developed by Israa Fakih and Laura Grigori (DOI: )
+### The randomized method is only included for specified modes
+struct SEQRCSPivProjected{Start,End,RandomModes} <: MttkrpAlgorithm end
 
-function project_krp(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
+## TODO modify to use ranges 
+SEQRCSPivProjected() = SEQRCSPivProjected{(1,),(0,),nothing}()
+SEQRCSPivProjected(n::Int) = SEQRCSPivProjected{(1,),(n,),nothing}()
+SEQRCSPivProjected(n::Int, m::Int) = SEQRCSPivProjected{(n,),(m,),nothing}()
+SEQRCSPivProjected(n::Int, m::Int, mode::Int) = SEQRCSPivProjected{(n,),(m,),(mode,)}()
+SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected{Tuple(Int.(ones(length(n)))),n,nothing}()
+SEQRCSPivProjected(n::Tuple, m::Tuple) = SEQRCSPivProjected{n,m,nothing}()
+SEQRCSPivProjected(n::Tuple, m::Tuple, modes::Tuple) = SEQRCSPivProjected{n,m,modes}()
+
+random_modes(::SEQRCSPivProjected{N,M,Modes}) where {N,M,Modes} = Modes
+## This is a union class so that the operations work on both pivot based solver algorithms
+const PivotBasedSolvers{N,M} = Union{QRPivProjected{N,M}, SEQRCSPivProjected{N,M}}
+
+start(::PivotBasedSolvers{N}) where {N} = N
+stop(::PivotBasedSolvers{N,M}) where {N,M} = M
+
+function project_krp(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
     krp_piv = ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
     return krp_piv
 end
 
-function project_target(::QRPivProjected, als, factors, cp, rank::Index, fact::Int, krp)
+function project_target(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int, krp)
     return als.additional_items[:target_transform][fact]
 end
 
-function solve_ls_problem(::QRPivProjected, projected_KRP, project_target, rank)
+function solve_ls_problem(::PivotBasedSolvers, projected_KRP, project_target, rank)
     direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
     i = ind(project_target, 1)
     return itensor(copy(transpose(direction)), i,rank)
 end
 
-function post_solve(::QRPivProjected, als, factors, λ, cp, rank::Index, fact::Integer) end
+function post_solve(::PivotBasedSolvers, als, factors, λ, cp, rank::Index, fact::Integer) end
 
 
 ## This solver does not form the normal equations. 
