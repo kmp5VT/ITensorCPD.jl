@@ -55,6 +55,9 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
         println("$(dim(rank))\t $(check.iter) \t $(curr_fit) \t $(Δfit)")
     end
 
+    if isnan(curr_fit)
+        throw("Error NAN")
+    end
     if Δfit < check.tolerance
         check.counter += 1
         if check.counter >= 2
