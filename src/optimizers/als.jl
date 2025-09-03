@@ -65,14 +65,12 @@ function als_optimize(
     check = nothing,
     verbose = false,
 )
-println("Inside QRPivProjected als_optimize, lst = $lst")
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
     piv_id = nothing
     for (i, n) in zip(inds(target), 1:length(cp))
         Ris = uniqueinds(target, i)
-        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
 
         dRis = dim(Ris)
         int_end = stop(alg)
@@ -83,6 +81,56 @@ println("Inside QRPivProjected als_optimize, lst = $lst")
         int_start = start(alg)
         int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
         @assert int_start > 0 && int_start ≤ int_end
+
+        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
+        _, _, p = qr(Tmat, ColumnNorm())
+        push!(pivots, p)
+
+        ndim = int_end - int_start + 1
+        piv_id = Index(ndim, "pivot")
+
+        push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
+        TP = fused_flatten_sample(target, n, projectors[n])
+    push!(targets, TP)
+    end
+    extra_args[:projects] = pivots
+    extra_args[:projects_tensors] = projectors
+    extra_args[:target_transform] = targets
+    
+    # return ALS(target, alg, extra_args, check)
+    return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
+end
+
+function als_optimize(
+    alg::SEQRCSPivProjected,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    verbose = false,
+)
+    lst = random_modes(alg)
+    lst = isnothing(lst) ? [] : lst
+    
+    pivots = Vector{Vector{Int}}()
+    projectors = Vector{ITensor}()
+    targets = Vector{ITensor}()
+    piv_id = nothing
+    for (i, n) in zip(inds(target), 1:length(cp))
+        Ris = uniqueinds(target, i)
+
+        dRis = dim(Ris)
+        int_end = stop(alg)
+        int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
+        int_end = iszero(int_end) ? dRis : int_end
+        int_end = dRis < int_end ? dRis : int_end
+
+        int_start = start(alg)
+        int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
+        @assert int_start > 0 && int_start ≤ int_end
+
+        # TODO Use the randomized linear algebra to remove the need to form the matricized tensor.
+        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
         if n in lst
             m = dim(i)
             l=Int(round(3 * m * log(m))) #sketching dimension
