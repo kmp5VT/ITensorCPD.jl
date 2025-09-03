@@ -255,7 +255,7 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
             target_ind = target_inds[fact]
             # ### Trying to solve T V = I [(J x K) V] 
             # #### This is the first KRP * Singular values of T: [(J x K) V]  
-            factor_portion = factors[1:end .!= fact]
+            factor_portion = @view factors[1:end .!= fact]
             projected_KRP = project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
             
             projected_target =

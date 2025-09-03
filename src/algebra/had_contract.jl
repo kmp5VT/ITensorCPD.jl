@@ -48,7 +48,7 @@ end
 ## for example D(i,k,r) = A(i,j,r) * B(j,r,k) C(k,l) = ∀ rᵢ D_rᵢ(i,l) = (A_rᵢ(i,j) B_rᵢ(j,k)) C(k,l)
 ## The variable `sequence` can be provided to specify the contraction sequence of the subnetwork problems.
 ## if sequence == nothing then the optimal path will be computed.
-function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequence = nothing)
+function had_contract(tensors, had::Index; α = true, sequence = nothing)
     had_tensors = Vector{Int}() 
     no_had = Vector{Int}() 
 
@@ -247,7 +247,7 @@ end
 ## This function is special tensor product derived from the khatri-rao product
 ## each tensor must be a matrix with one matching mode. See above for a full description.
 ## This function works for a list of tensors to be fused via the Khatri-Rao product.
-function pivot_hadamard(tensors::Vector{<:ITensor}, had::Index, pivots::ITensor)
+function pivot_hadamard(tensors, had::Index, pivots::ITensor)
     for tensor in tensors
         @assert had == ind(tensor, 2)
     end

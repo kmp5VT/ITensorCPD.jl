@@ -13,7 +13,7 @@ struct KRP <: MttkrpAlgorithm end
 ## This process could be distributed.
 function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
 
-    factor_portion = factors[1:end .!= fact]
+    factor_portion = @view factors[1:end .!= fact]
     sequence = ITensors.default_sequence()
     krp = had_contract(dag.(factor_portion), rank; sequence)
 
@@ -29,7 +29,7 @@ struct direct <: MttkrpAlgorithm end
 ## contracting the factor matrices into the tensor for each value of r
 ## This process could be distributed.
 function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
-    factor_portion = factors[1:end .!= fact]
+    factor_portion = @view factors[1:end .!= fact]
     if isnothing(als.additional_items[:mttkrp_contract_sequences][fact])
         als.additional_items[:mttkrp_contract_sequences][fact] =
             optimal_had_contraction_sequence([als.target, dag.(factor_portion)...], rank)
@@ -53,7 +53,7 @@ function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) 
 struct TargetDecomp <: MttkrpAlgorithm end
 
 function mttkrp(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
-    factor_portion = factors[1:end .!= fact]
+    factor_portion = @view factors[1:end .!= fact]
     m = had_contract(
         [
             als.additional_items[:target_transform][fact],
