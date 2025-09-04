@@ -22,15 +22,24 @@ function Sparse_Emd(n,l,s)
     return omega
 end
 
+lib_ext = Sys.KERNEL == :Darwin ? ".dylib" :
+          Sys.KERNEL == :Linux  ? ".so"  :
+          Sys.KERNEL == :Windows ? ".dll" :
+          error("Unsupported OS")
+
+libsparse1 = joinpath(@__DIR__, "libsparse_sign" * lib_ext)
+
+
 ##Wrapping the sparse_sign file into a julia function
 function sparse_sign_matrix(l::Int, n::Int, s::Int)
+
     nnz=n*s
     vals = Array{Float64}(undef, nnz)
     rows = Array{Int32}(undef, nnz)          
     colstarts = Array{Int32}(undef, n+1)
     ccall((
         :sparse_sign,
-        libsparse
+        libsparse1
         ),
         Cvoid,
         (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
