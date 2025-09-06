@@ -20,7 +20,7 @@ function decompose(
     end
 end
 
-function ITensorCPD.decompose(
+function decompose(
     A,
     epsilon,
     max_rank::Int;
