@@ -200,8 +200,7 @@ abstract type ProjectionAlgorithm end
             block_size = blocks(als.mttkrp_alg)
             block_size = length(block_size) == 1 ? block_size[1] : block_size[fact]
 
-            size_fast = fact == 1 ? dim(ind(cp, 2)) : dim(ind(cp, 1))
-            sampled_cols = block_sample_factor_matrices(nsamps, als.additional_items[:factor_weights], block_size, fact, size_fast)
+            sampled_cols = block_sample_factor_matrices(nsamps, als.additional_items[:factor_weights], block_size, fact)
             ## Write new samples to pivot tensor
             dRis = dims(inds(cp)[1:end .!= fact])
             data(als.additional_items[:pivot_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)

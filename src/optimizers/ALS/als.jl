@@ -165,9 +165,8 @@ function compute_als(
         nsamps = length(nsamps) == 1 ? nsamps[1] : nsamps[fact]
         block_size = blocks(alg)
         block_size = length(block_size) == 1 ? block_size[1] : block_size[fact]
-        size_fast = fact == 1 ? dim(ind(cp, 2)) : dim(ind(cp, 1))
         
-        sampled_cols = block_sample_factor_matrices(nsamps, extra_args[:factor_weights] , block_size, fact, size_fast)
+        sampled_cols = block_sample_factor_matrices(nsamps, extra_args[:factor_weights] , block_size, fact)
 
         ## We store the rows of the flattened tensor (i.e. α) because it can be converted to factor values
         ## or values in the vectorized tensor
@@ -177,6 +176,9 @@ function compute_als(
         ## make the canonical pivot tensor. This list of pivots will be overwritten each ALS iteration
         push!(pivot_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
     end
+    ## Notice the pivot tensor is actually a low rank tensor it stores the diagonal pivot values
+    ## in α form (rows of the matricized tensor) and the indices which are captured in the pivot.
+    ## The order of indices are (indices which connect to the pivot, pivot_index).
     extra_args[:pivot_tensors] = pivot_tensors
     return ALS(target, alg, extra_args, check, optimize_diff_projection)
     # return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
