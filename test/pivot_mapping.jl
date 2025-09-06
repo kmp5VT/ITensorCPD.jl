@@ -34,7 +34,7 @@ using ITensorCPD: column_to_multi_coords
     b = Index(j, "b");
     c = Index(k, "c");
     d = Index(l, "d");
-    T = randomITensor(a, b, c, d);
+    T = random_itensor(a, b, c, d);
 
     # Reshape tensor to (c,abd) (column major in Julia I think)
     ris = [a,b,d];
