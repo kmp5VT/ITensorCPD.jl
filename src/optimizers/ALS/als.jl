@@ -248,6 +248,11 @@ function als_optimize(
     optimize(cp, als; verbose)
 end
 
+## This function optimizes the CP-ALS via the normal equations
+## [in] cp is a CPD opject that contains the factor matrices to be optimized
+## [in] als An ALS object that contains the algorithm which will be used to form the normal equations
+## [in] verbose a boolean that determines if the algorithm should print optimization information.
+## [out] A CPD object with optmiized ALS factors
 function optimize(cp::CPD, als::ALS; verbose = true)
     rank = cp_rank(cp)
     iter = 0
@@ -299,6 +304,15 @@ function optimize(cp::CPD, als::ALS; verbose = true)
     return CPD{typeof(als.target)}(factors, λ)
 end
 
+## This function optimizes the CP-ALS via a projected LS equation i.e. |PT_a - A (B ⊙ C) P |²
+## This function does not expilcitly form the normal equation just computes the projected and matricized T, the 
+## projected khatri rao product and solves the linear equation PT_a = A (B ⊙ C)P.
+## Note the solve_ls_problem function can be modified to form the normal equation based solution.
+
+## [in] cp is a CPD opject that contains the factor matrices to be optimized
+## [in] als An ALS object that contains the algorithm which will be used to form the normal equations
+## [in] verbose a boolean that determines if the algorithm should print optimization information.
+## [out] A CPD object with optmiized ALS factors
 function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
     rank = cp_rank(cp)
     iter = 0
