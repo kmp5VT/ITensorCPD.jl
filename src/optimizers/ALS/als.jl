@@ -7,15 +7,31 @@ struct ALS <: CPDOptimizer
     mttkrp_alg::Union{MttkrpAlgorithm,ProjectionAlgorithm}
     additional_items::Dict
     check::ConvergeAlg
+    optimize_function::Function
 end
 
+include("optimize.jl")
+
 function als_optimize(
+    target,
+    cp::CPD;
+    alg = nothing,
+    check = nothing,
+    maxiter = nothing,
+    verbose = false,)
+    als = compute_als(target, cp; alg, check, maxiter)
+    als.optimize_function(cp, als; verbose)
+end
+
+## Default ALS constructor algorithm for Tensors (versus tensor networks). 
+## This will develop the "optimization sequence" variable
+## and then pass along to more specialized constructors
+function compute_als(
     target::ITensor,
     cp::CPD{<:ITensor};
     alg = nothing,
     check = nothing,
-    maxiter = nothing,
-    verbose = false,
+    maxiter = nothing
 )
     alg = isnothing(alg) ? direct() : alg
     extra_args = Dict();
@@ -25,38 +41,39 @@ function als_optimize(
         push!(mttkrp_contract_sequences, nothing)
     end
     extra_args[:mttkrp_contract_sequences] = mttkrp_contract_sequences
-    als_optimize(alg, target, cp; extra_args, check, verbose)
+    return compute_als(alg, target, cp; extra_args, check)
 end
 
-function als_optimize(
+## Default constructor algorithms for normal equation based solvers (MttkrpAlgorithm).
+## This needs no extra information and passes the function `optimize` as the optimizer algorithm.
+function compute_als(
     alg::MttkrpAlgorithm,
     target::ITensor,
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
-    verbose = false,
 )
-    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
+    return ALS(target, alg, extra_args, check, optimize)
 end
 
-function als_optimize(
-    alg::InvKRP,
+## Default constructor algorithms for non-normal equation based solvers (ProjectionAlgorithm).
+## This needs no extra information and passes the function `optimize` as the optimizer algorithm.
+function compute_als(
+    alg::ProjectionAlgorithm,
     target::ITensor,
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
-    verbose = false,
 )
-    return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
+    return ALS(target, alg, extra_args, check, optimize_diff_projection)
 end
 
-function als_optimize(
+function compute_als(
     alg::QRPivProjected,
     target::ITensor,
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
-    verbose = false,
 )
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
@@ -89,17 +106,16 @@ function als_optimize(
     extra_args[:projects_tensors] = projectors
     extra_args[:target_transform] = targets
     
-    # return ALS(target, alg, extra_args, check)
-    return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
+    return ALS(target, alg, extra_args, check, optimize_diff_projection)
+    #return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
-function als_optimize(
+function compute_als(
     alg::LevScoreSampled,
     target::ITensor,
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
-    verbose = false,
 )
     ## For each factor matrix compute its weights
     extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
@@ -124,17 +140,16 @@ function als_optimize(
         push!(pivot_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
     end
     extra_args[:pivot_tensors] = pivot_tensors
-    # return ALS(target, alg, extra_args, check)
-    return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
+    return ALS(target, alg, extra_args, check, optimize_diff_projection)
+    # return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
-function als_optimize(
+function compute_als(
     alg::BlockLevScoreSampled,
     target::ITensor,
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
-    verbose = false,
 )
     ## For each factor matrix compute its weights
     extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
@@ -163,17 +178,16 @@ function als_optimize(
         push!(pivot_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
     end
     extra_args[:pivot_tensors] = pivot_tensors
-    # return ALS(target, alg, extra_args, check)
-    return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
+    return ALS(target, alg, extra_args, check, optimize_diff_projection)
+    # return optimize_diff_projection(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
-function als_optimize(
+function compute_als(
     alg::TargetDecomp,
     target::ITensor,
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
-    verbose = false,
 )
     decomps = Vector{ITensor}()
     targets = Vector{ITensor}()
@@ -186,10 +200,11 @@ function als_optimize(
     extra_args[:target_decomps] = decomps
     extra_args[:target_transform] = targets
 
-    return optimize(cp, ALS(target, alg, extra_args, check); verbose)
+    return ALS(target, alg, extra_args, check, optimize)
+    # return optimize(cp, ALS(target, alg, extra_args, check); verbose)
 end
 
-function als_optimize(
+function compute_als(
     target::ITensorNetwork,
     cp::CPD{<:ITensorNetwork};
     alg = nothing,
@@ -244,109 +259,8 @@ function als_optimize(
             :mttkrp_contract_sequences => mttkrp_contract_sequences,
         ),
         check,
+        optimize,
     )
-    optimize(cp, als; verbose)
-end
-
-## This function optimizes the CP-ALS via the normal equations
-## [in] cp is a CPD opject that contains the factor matrices to be optimized
-## [in] als An ALS object that contains the algorithm which will be used to form the normal equations
-## [in] verbose a boolean that determines if the algorithm should print optimization information.
-## [out] A CPD object with optmiized ALS factors
-function optimize(cp::CPD, als::ALS; verbose = true)
-    rank = cp_rank(cp)
-    iter = 0
-    part_grammian = cp.factors .* dag.(prime.(cp.factors; tags = tags(rank)))
-    num_factors = length(cp.factors)
-    λ = copy(cp.λ)
-    factors = copy(cp.factors)
-    converge = als.check
-    while iter < converge.max_counter
-        mtkrp = nothing
-        for fact = 1:num_factors
-            ## compute the matrized tensor time khatri rao product with a provided algorithm.
-            mtkrp = mttkrp(als.mttkrp_alg, als, factors, cp, rank, fact)
-
-            ## compute the grammian which requires the hadamard product
-            grammian = similar(part_grammian[1])
-            fill!(grammian, one(eltype(cp)))
-            for i = 1:num_factors
-                if i == fact
-                    continue
-                end
-                grammian = hadamard_product(grammian, part_grammian[i])
-            end
-
-            ## potentially better to first inverse the grammian then contract
-            ## qr(A, Val(true))
-            solution = qr(array(dag(grammian)), ColumnNorm()) \ transpose(array(mtkrp))
-            
-            factors[fact], λ = row_norm(
-                itensor(copy(transpose(solution)), inds(mtkrp)),
-                ind(cp, fact),
-            )
-            part_grammian[fact] =
-                factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
-
-            post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
-        end
-
-        # potentially save the MTTKRP for the loss function
-
-        save_mttkrp(converge, mtkrp)
-
-        if check_converge(converge, factors, λ, part_grammian; verbose)
-            break
-        end
-        iter += 1
-    end
-
-    return CPD{typeof(als.target)}(factors, λ)
-end
-
-## This function optimizes the CP-ALS via a projected LS equation i.e. |PT_a - A (B ⊙ C) P |²
-## This function does not expilcitly form the normal equation just computes the projected and matricized T, the 
-## projected khatri rao product and solves the linear equation PT_a = A (B ⊙ C)P.
-## Note the solve_ls_problem function can be modified to form the normal equation based solution.
-
-## [in] cp is a CPD opject that contains the factor matrices to be optimized
-## [in] als An ALS object that contains the algorithm which will be used to form the normal equations
-## [in] verbose a boolean that determines if the algorithm should print optimization information.
-## [out] A CPD object with optmiized ALS factors
-function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
-    rank = cp_rank(cp)
-    iter = 0
-
-    λ = copy(cp.λ)
-    factors = copy(cp.factors)
-
-    converge = als.check
-    target_inds = inds(als.target)
-
-    while iter < converge.max_counter
-        for fact = 1:length(cp)
-            target_ind = target_inds[fact]
-            # ### Trying to solve T V = I [(J x K) V] 
-            # #### This is the first KRP * Singular values of T: [(J x K) V]  
-            factor_portion = factors[1:end .!= fact]
-            projected_KRP = project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
-            
-            projected_target =
-                project_target(als.mttkrp_alg, als, factor_portion, cp, rank, fact, projected_KRP)
-
-            # ##### Now contract TV by the inverse of KRP * SVD
-            direction = solve_ls_problem(als.mttkrp_alg, projected_KRP, projected_target, rank)
-
-            factors[fact], λ = row_norm(direction, target_ind)
-
-            post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
-        end
-
-        recon = reconstruct(factors, λ)
-        diff = als.target - recon
-        println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
-        iter += 1
-    end
-
-    return CPD{typeof(als.target)}(factors, λ)
+    #optimize(cp, als; verbose)
+    return als
 end
