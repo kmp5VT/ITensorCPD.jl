@@ -136,13 +136,14 @@ abstract type ProjectionAlgorithm end
     ### With this solver we are going to compute sampling projectors for LS decomposition
     ### based on the leverage score of the factor matrices. Then we are going to solve a
     ### sampled least squares problem 
-    struct LevScoreSampled{NSamples} <: ProjectionAlgorithm end
+    struct LevScoreSampled <: ProjectionAlgorithm
+        NSamples::Tuple
+    end
 
         LevScoreSampled() = LevScoreSampled{(0,)}()
-        LevScoreSampled(n::Int) = LevScoreSampled{(n,)}()
-        LevScoreSampled(n::Tuple) = LevScoreSampled{n}()
+        LevScoreSampled(n::Int) = LevScoreSampled((n,))
 
-        nsamples(::LevScoreSampled{N}) where {N} = N
+        nsamples(alg::LevScoreSampled) = alg.NSamples
 
         ## We are going to construct a matrix of sampled indices of the tensor
         function project_krp(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int)
@@ -178,17 +179,19 @@ abstract type ProjectionAlgorithm end
     ### based on the leverage score of the factor matrices. Then we are going to solve a
     ### sampled least squares problem. To make the sampling process more efficient this algorithm
     ### gathers samples in blocks
-    struct BlockLevScoreSampled{NSamples, Blocks} <: ProjectionAlgorithm end
+    struct BlockLevScoreSampled<: ProjectionAlgorithm 
+        NSamples::Tuple
+        Blocks::Tuple
+    end
 
-        BlockLevScoreSampled() = BlockLevScoreSampled{(0,), (1,)}()
-        BlockLevScoreSampled(n::Int) = BlockLevScoreSampled{(n,), (1,)}()
+        BlockLevScoreSampled() = BlockLevScoreSampled((0,), (1,))
+        BlockLevScoreSampled(n::Int) = BlockLevScoreSampled((n,), (1,))
+        BlockLevScoreSampled(n::Int, m::Int) = BlockLevScoreSampled((n,), (m,))
         BlockLevScoreSampled(n::Tuple) = BlockLevScoreSampled{n, (1,)}()
+        BlockLevScoreSampled(n::Int, m::Tuple) = BlockLevScoreSampled((n,), m)
 
-        BlockLevScoreSampled(n::Int, m::Int) = BlockLevScoreSampled{(n,), (m,)}()
-        BlockLevScoreSampled(n::Tuple, m::Tuple) = BlockLevScoreSampled{n, m}()
-
-        nsamples(::BlockLevScoreSampled{N}) where {N} = N
-        blocks(::BlockLevScoreSampled{N,M}) where {N, M} = M
+        nsamples(alg::BlockLevScoreSampled) = alg.NSamples
+        blocks(alg::BlockLevScoreSampled) = alg.Blocks
 
         ## We are going to construct a matrix of sampled indices of the tensor
         function project_krp(::BlockLevScoreSampled, als, factors, cp, rank::Index, fact::Int)
