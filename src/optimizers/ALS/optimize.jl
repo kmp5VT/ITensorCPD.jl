@@ -92,9 +92,14 @@ function optimize_diff_projection(cp::CPD, als::ALS; verbose = true)
             post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
         end
 
-        recon = reconstruct(factors, λ)
-        diff = als.target - recon
-        println("Accuracy: $(1.0 - norm(diff) / norm(als.target))")
+        if als.check isa FitCheck && verbose
+            inner_prod = (ITensorCPD.had_contract([als.target, factors...], rank) * λ)[]
+            partial_gram = [fact * dag(prime(fact; tags=tags(rank))) for fact in factors];
+            fact_square = ITensorCPD.norm_factors(partial_gram, λ)
+            normResidual =
+                sqrt(abs(als.check.ref_norm * als.check.ref_norm + fact_square - 2 * abs(inner_prod)))
+            println("Accuracy: $(1.0 - normResidual / norm(als.check.ref_norm))")
+        end
         iter += 1
     end
 
