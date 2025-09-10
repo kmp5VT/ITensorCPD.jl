@@ -5,13 +5,13 @@ mutable struct FitCheck <: ConvergeAlg
     max_counter::Int
     ref_norm::Number
     MttKRP::ITensor
-    fit::Number
+    lastfit::Number
     final_fit::Number
 
     FitCheck(tol, max, norm) = new(0, 0, tol, max, norm, ITensor(), 1, 0)
 end
 
-save_mttkrp(fit::FitCheck, mttkrp::ITensor) = fit.MttKRP = mttkrp
+save_mttkrp(check::FitCheck, mttkrp::ITensor) = check.MttKRP = mttkrp
 
 function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = true)
     check.iter += 1
@@ -22,8 +22,8 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     normResidual =
         sqrt(abs(check.ref_norm * check.ref_norm + fact_square - 2 * abs(inner_prod)))
     curr_fit = 1.0 - (normResidual / check.ref_norm)
-    Δfit = abs(check.fit - curr_fit)
-    check.fit = curr_fit
+    Δfit = abs(check.lastfit - curr_fit)
+    check.lastfit = curr_fit
 
     if (verbose)
         println("$(dim(rank))\t $(check.iter) \t $(curr_fit) \t $(Δfit)")
@@ -34,8 +34,8 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
         if check.counter >= 2
             check.iter = 0
             check.counter = 0
-            check.final_fit = check.fit
-            check.fit = 0
+            check.final_fit = check.lastfit
+            check.lastfit = 0
             return true
         end
     else
@@ -45,8 +45,8 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     if check.iter == check.max_counter
         check.iter = 0
         check.counter = 0
-        check.final_fit = check.fit
-        check.fit = 0
+        check.final_fit = check.lastfit
+        check.lastfit = 0
     end
 
     return false
@@ -60,4 +60,4 @@ function norm_factors(partial_gram::Vector, λ::ITensor)
     return (had*(λ*dag(prime(λ))))[]
 end
 
-fit(fit::FitCheck) = fit.final_fit
+CPDFit(check::FitCheck) = check.final_fit

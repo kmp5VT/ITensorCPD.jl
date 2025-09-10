@@ -1,7 +1,7 @@
 mutable struct NoCheck <: ConvergeAlg
     counter::Int
     max_counter::Int
-    fit::Number
+    lastfit::Number
 
     NoCheck(max) = new(0, max, -1)
 end
