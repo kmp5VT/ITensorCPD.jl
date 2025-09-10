@@ -40,21 +40,22 @@
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(svd_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-5
 
-    check = ITensorCPD.NoCheck(35)
+    # check = ITensorCPD.NoCheck(35)
+    check = ITensorCPD.FitCheck(1e-6, 35, norm(A))
 
 
     ## This method uses the interpolative squared to precondition the problem.
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (20*40, 20*40, 20*30)), check);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (20*40, 20*40, 20*30)), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
-    direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check);
+    direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(direct_inversion_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
@@ -87,7 +88,6 @@
     for i in 1:3
         cpd_opt = ITensorCPD.als_optimize(T, cpd; alg);
         val = norm(reconstruct(cpd_opt) - T) / norm(T) 
-        @show val
         min_val = val < min_val ? val : val
     end
      @test min_val < 0.1

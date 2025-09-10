@@ -4,6 +4,44 @@ using ITensors.NDTensors: data
 ## These are solvers which take advantage to the canonical CP-ALS normal equations
 abstract type MttkrpAlgorithm end
 
+    ## Default convergence checking function for Mttkrp based algorithms
+    function check_converge(::MttkrpAlgorithm, 
+        converge::ConvergeAlg, als,
+        mtkrp, factors, λ, 
+        verbose=false)::Bool
+        # potentially save the MTTKRP for the loss function
+
+        save_mttkrp(converge, mtkrp)
+
+        return check_converge(converge, factors, λ,  als.additional_items[:part_grammian]; verbose)
+    end
+
+    ## Default algorithm to compute KRP for MTTKRP algorithsm.
+    ## Actually computes the grammian.
+    function compute_krp(::MttkrpAlgorithm,
+        als, factors, cp, rank::Index, fact::Int)
+        ## compute the grammian which requires the hadamard product
+        grammian = similar(als.additional_items[:part_grammian][1])
+        fill!(grammian, one(eltype(cp)))
+        num_factors = length(cp)
+        for i = 1:num_factors
+            if i == fact
+                continue
+            end
+            grammian = hadamard_product(grammian, als.additional_items[:part_grammian][i])
+        end
+        return grammian
+    end
+
+    ## Default algorithm uses the pivoted QR to solve LS problem.
+    function solve_ls_problem(::MttkrpAlgorithm,krp, mtkrp, rank)
+        ## potentially better to first inverse the grammian then contract
+        ## qr(A, Val(true))
+        solution = qr(array(dag(krp)), ColumnNorm()) \ transpose(array(mtkrp))
+        i = ind(mtkrp, 1)
+        return itensor(copy(transpose(solution)), i,rank)
+    end
+
     ## This version assumes we have the exact target and can form the tensor
     ## This forms the khatri-rao product for a single value of r and immediately
     ## contracts it with the target tensor. This is relatively expensive because the KRP will be
@@ -11,7 +49,7 @@ abstract type MttkrpAlgorithm end
     ## This process could be distributed.
     struct KRP <: MttkrpAlgorithm end
 
-        function mttkrp(::KRP, als, factors, cp, rank::Index, fact::Int)
+        function matricize_tensor(::KRP, als, factors, cp, rank::Index, fact::Int)
 
             factor_portion = factors[1:end .!= fact]
             sequence = ITensors.default_sequence()
@@ -21,14 +59,17 @@ abstract type MttkrpAlgorithm end
             return m
         end
 
-        function post_solve(::KRP, als, factors, λ, cp, rank::Index, fact::Integer) end
+        function post_solve(::KRP, als, factors, λ, cp, rank::Index, fact::Integer)
+            als.additional_items[:part_grammian][fact] =
+                factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
+        end
 
     ## This code skips computing the khatri-rao product by incrementally 
     ## contracting the factor matrices into the tensor for each value of r
     ## This process could be distributed.
     struct direct <: MttkrpAlgorithm end
 
-        function mttkrp(::direct, als, factors, cp, rank::Index, fact::Int)
+        function matricize_tensor(::direct, als, factors, cp, rank::Index, fact::Int)
             factor_portion = factors[1:end .!= fact]
             if isnothing(als.additional_items[:mttkrp_contract_sequences][fact])
                 als.additional_items[:mttkrp_contract_sequences][fact] =
@@ -42,7 +83,10 @@ abstract type MttkrpAlgorithm end
             return m
         end
 
-        function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) end
+        function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) 
+            als.additional_items[:part_grammian][fact] =
+                factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
+        end
 
     ### This solver is slightly silly. It takes a higher-order tensor T forms the SVD of every unfolding
     ### for example T(a,b,c) => T(a,bc) => U(a,r) S(r,rp) V(rp,bc). We use this decomposition to represent T as
@@ -51,7 +95,7 @@ abstract type MttkrpAlgorithm end
     ### i.e. (U(a,r) S(r,rp)) for each mode but solving the least squares problem is no less expensive.
     struct TargetDecomp <: MttkrpAlgorithm end
 
-        function mttkrp(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
+        function matricize_tensor(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
             factor_portion = factors[1:end .!= fact]
             m = had_contract(
                 [
@@ -65,7 +109,10 @@ abstract type MttkrpAlgorithm end
             return m
         end
 
-        function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer) end
+        function post_solve(::TargetDecomp, als, factors, λ, cp, rank::Index, fact::Integer)
+            als.additional_items[:part_grammian][fact] =
+                factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
+        end
 
 
 
@@ -78,7 +125,7 @@ abstract type MttkrpAlgorithm end
 
     struct network_solver <: MttkrpAlgorithm end
 
-        function mttkrp(::network_solver, als, factors, cp, rank::Index, fact::Int)
+        function matricize_tensor(::network_solver, als, factors, cp, rank::Index, fact::Int)
             m = similar(factors[fact])
 
             target_index = ind(cp, fact)
@@ -106,6 +153,9 @@ abstract type MttkrpAlgorithm end
         end
 
         function post_solve(::network_solver, als, factors, λ, cp, rank::Index, fact::Integer)
+            als.additional_items[:part_grammian][fact] =
+                factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
+
             ## Once done with all factor which connect to it, then go through uniqueinds and contract in the 
             ## associated new factors
             partial_ind = als.additional_items[:factor_to_part_cont][fact]
@@ -133,6 +183,36 @@ abstract type MttkrpAlgorithm end
 ## These are algorithms which do not use the normal equations and solve | PT - A (B ⊙ C) P |²
 abstract type ProjectionAlgorithm end
 
+    ## Default algorithm to compute the KRP: This computes a projected/sampled KRP
+    function compute_krp(::ProjectionAlgorithm, als, factors, cp, rank, fact)
+        factor_portion = factors[1:end .!= fact]
+        return project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
+    end
+
+    ## Default algorithm to compute the convergence, this doesn't do
+    ## Anything except it can compute the fit if verbose =true (this is for
+    ## testing purposes only) ## TODO make a new convergence tester
+    function check_converge(::ProjectionAlgorithm, 
+        converge::ConvergeAlg, als,
+        mtkrp, factors, λ, 
+        verbose=false)::Bool
+        # potentially save the MTTKRP for the loss function
+
+        # save_mttkrp(converge, mtkrp)
+        cprank = ind(λ, 1)
+        if als.check isa FitCheck && verbose
+            inner_prod = (had_contract([als.target, dag.(factors)...], cprank) * dag(λ))[]
+            partial_gram = [fact * dag(prime(fact; tags=tags(cprank))) for fact in factors];
+            fact_square = ITensorCPD.norm_factors(partial_gram, λ)
+            normResidual =
+                sqrt(abs(als.check.ref_norm * als.check.ref_norm + fact_square - 2 * abs(inner_prod)))
+            println("Accuracy: $(1.0 - normResidual / norm(als.check.ref_norm))")
+        end
+
+        # return check_converge(converge, factors, λ,  []; verbose)
+        return false
+    end
+
     ### With this solver we are going to compute sampling projectors for LS decomposition
     ### based on the leverage score of the factor matrices. Then we are going to solve a
     ### sampled least squares problem 
@@ -140,6 +220,7 @@ abstract type ProjectionAlgorithm end
         NSamples::Tuple
     end
 
+        # What happens when sampling is 0?
         LevScoreSampled() = LevScoreSampled{(0,)}()
         LevScoreSampled(n::Int) = LevScoreSampled((n,))
 
@@ -158,7 +239,7 @@ abstract type ProjectionAlgorithm end
             return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:pivot_tensors][fact])[end])
         end
 
-        function project_target(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int, krp)
+        function matricize_tensor(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int)
             ## I need to turn this into an ITensor and then pass it to the computed algorithm.
             return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
         end
@@ -171,7 +252,7 @@ abstract type ProjectionAlgorithm end
         end
 
         function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
-        ## update the factor weights.
+            ## update the factor weights.
             als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact))
         end
 
@@ -208,7 +289,7 @@ abstract type ProjectionAlgorithm end
             return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:pivot_tensors][fact])[end])
         end
 
-        function project_target(::BlockLevScoreSampled, als, factors, cp, rank::Index, fact::Int, krp)
+        function matricize_tensor(::BlockLevScoreSampled, als, factors, cp, rank::Index, fact::Int)
             ## I need to turn this into an ITensor and then pass it to the computed algorithm.
             return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
         end
@@ -246,7 +327,7 @@ abstract type ProjectionAlgorithm end
             return krp_piv
         end
 
-        function project_target(::QRPivProjected, als, factors, cp, rank::Index, fact::Int, krp)
+        function matricize_tensor(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
             return als.additional_items[:target_transform][fact]
         end
 
@@ -266,7 +347,7 @@ abstract type ProjectionAlgorithm end
         function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
             return had_contract(factors, rank)
         end
-        function project_target(::InvKRP, als, factors, cp, rank::Index, fact::Int, krp)
+        function matricize_tensor(::InvKRP, als, factors, cp, rank::Index, fact::Int)
             return als.target
         end
 
