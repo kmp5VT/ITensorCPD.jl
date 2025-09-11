@@ -2,6 +2,7 @@ using StatsBase
 using SparseArrays: sparse
 using LinearAlgebra
 
+
 """
 Sparse_Emd(n,l,s) 
 
@@ -46,9 +47,10 @@ end
 SEQRCS(A,l,s,k,t)
 
 Performs Randomized QR to a matrix 'A' for a given rank 'k'
-
 # Arguments
-'A': input matrix
+'A': target tensor
+'mode': mode along which to matricize
+'i': index of the mode
 'l': embedding dimension
 's': sparsity parameter
 'k': rank of QR on 'A'
@@ -56,14 +58,15 @@ Performs Randomized QR to a matrix 'A' for a given rank 'k'
 
 
 """
-function SEQRCS(A,l,s,k,t)
-    n=size(A,2)
+function SEQRCS(A:: ITensor,mode::Int,i,l,s,k,t)
+    Ris = uniqueinds(A, i)         
+    n = prod(dim.(Ris)) 
 
     # Generate sparse embedding
     omega = sparse_sign_matrix(l,n,s)
 
     # Sketch the matrix and applying QR 
-    A_sk =  A*omega'
+    A_sk = sketched_matricization(A, mode , omega')
     F = qr(A_sk, ColumnNorm())  
     _, _, p_sk = F.Q, F.R, F.p
     p_sk=p_sk[1:t]
@@ -72,7 +75,10 @@ function SEQRCS(A,l,s,k,t)
     ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
     rows_sel = omega[p_sk,:]
     indices = findall(col -> any(col .!= 0), eachcol(rows_sel))
-    A_subset = A[:,indices]
+    indices_ind = Index(length(indices),"ind")
+    indices_tensor = itensor(indices, indices_ind)
+    A_subset = fused_flatten_sample(A, mode, indices_tensor)
+    A_subset = matrix(A_subset)
     println("The size of A_subset is", length(indices))
 
     ## Perform QR on A_subset to get final 'k' pivots
@@ -81,8 +87,13 @@ function SEQRCS(A,l,s,k,t)
     rem_indices = setdiff(1:n,indices)
     p = vcat(indices[p_subset],rem_indices)
 
-    ## Form  A_rem to get the factor 'R'
-    A_rem = A[:,rem_indices]
+    ## Form  A_rem to get the factor 'R' 
+    ## We can remove this part no need to get Q and R
+    ## but keeping it just to make sure that the function is performing well
+    rem_indices_ind = Index(length(rem_indices),"rem_ind")
+    rem_indices_tensor = itensor(rem_indices, rem_indices_ind)
+    A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
+    A_rem = matrix(A_rem)
     R = hcat(R,Q'*A_rem)
     return Q,R,p
 

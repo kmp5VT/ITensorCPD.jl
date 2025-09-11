@@ -1,5 +1,5 @@
-using LinearAlgebra
-using ITensorCPD:SEQRCS, sparse_sign_matrix
+using LinearAlgebra, NPZ
+using ITensorCPD:SEQRCS, sparse_sign_matrix,COIL_tensor,Syn_Tensor, ERI_tensor
 
 ### testing the generation of sparse matrix
 @testset "S-Hashing matrix generation" begin
@@ -21,14 +21,18 @@ using ITensorCPD:SEQRCS, sparse_sign_matrix
     @test all(0.5<=v<=1.5 for v in sk_singular./act_singular)
 end
 
-### testing the performance of SE-QRCS
+## testing the performance of SE-QRCS
 @testset "SE-QRCS factorization test" begin
-    m,n,k=50,10000,40
-    A=randn(m,n)
+    k=40
+    A=randn(50,10000)
+    m, n = Index.((50, 10000))
+    A_tensor = itensor(A,m,n)
     F = qr(A, ColumnNorm())
     Q_act,R_act,p_act=F.Q,F.R,F.p
-    Q,R,p = SEQRCS(A,2500,1,40,40)
+    Q,R,p = SEQRCS(A_tensor,1,m,2500,1,40,40)
     error_act = norm(A[:,p_act]-Q_act[:,1:k]*R_act[1:k,:],2)/norm(A,2)
     error = norm(A[:,p]-Q[:,1:k]*R[1:k,:],2)/norm(A,2)
     @test (abs(error - error_act) <= 1e-2)
 end
+
+

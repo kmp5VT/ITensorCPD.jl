@@ -135,7 +135,7 @@ function als_optimize(
             m = dim(i)
             l=Int(round(3 * m * log(m))) #sketching dimension
             s=Int(round(log(m)))
-            _,_,p = SEQRCS(Tmat,l,s,dim(int_end),100)
+            _,_,p = SEQRCS(target,n,i,l,s,dim(int_end),100)
         else
             _, _, p = qr(Tmat, ColumnNorm())
         end
