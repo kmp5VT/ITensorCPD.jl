@@ -75,7 +75,7 @@ function  sketched_matricization(T:: ITensor, k::Int, omega)
   v = vec(NDTensors.data(T))
   l = size(omega,2)
   idx = ind(T, k)
-  As = zeros(Float64, dim(idx), l)
+  As = zeros(eltype(T), dim(idx), l)
   for j in 1:l
     w = findall(!iszero,omega[:,j])
     stride = strides(T.tensor)[k]
