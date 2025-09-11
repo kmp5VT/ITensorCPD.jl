@@ -1,5 +1,5 @@
-using LinearAlgebra, NPZ
-using ITensorCPD:SEQRCS, sparse_sign_matrix,COIL_tensor,Syn_Tensor, ERI_tensor
+using LinearAlgebra
+using ITensorCPD:SEQRCS, sparse_sign_matrix
 
 ### testing the generation of sparse matrix
 @testset "S-Hashing matrix generation" begin
