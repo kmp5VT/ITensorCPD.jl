@@ -67,3 +67,22 @@ function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
   end
   return As
 end
+
+## This function takes a higher order tensor and a sparse matrix
+## and gives the sketched matricization of the tensor
+
+function  sketched_matricization(T:: ITensor, k::Int, omega)
+  v = vec(NDTensors.data(T))
+  l = size(omega,2)
+  idx = ind(T, k)
+  As = zeros(Float64, dim(idx), l)
+  for j in 1:l
+    w = findall(!iszero,omega[:,j])
+    stride = strides(T.tensor)[k]
+    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), w)
+    for i in 1:dim(idx)
+      array(As)[i,j] = sum(@view v[pos .+ stride* (i-1)])
+    end
+  end
+  return As
+end
