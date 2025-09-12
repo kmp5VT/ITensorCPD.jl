@@ -109,16 +109,24 @@ start(::PivotBasedSolvers{N}) where {N} = N
 stop(::PivotBasedSolvers{N,M}) where {N,M} = M
 
 function project_krp(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
-    krp_piv = ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
-    return krp_piv
+    ## This computes the exact grammian of the normal equations.
+    # part_grammian = factors .* dag.(prime.(factors; tags = tags(rank)))
+    # p = part_grammian[1]
+    # for g in part_grammian[2:end]
+    #     hadamard_product!(p,p,g)
+    # end
+    # return p
+    return ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
 end
 
 function project_target(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int, krp)
+    ## This computes the projected MTTKRP
+    # return als.additional_items[:target_transform][fact] * ITensorCPD.pivot_hadamard(dag.(factors), rank, als.additional_items[:projects_tensors][fact])
     return als.additional_items[:target_transform][fact]
 end
 
 function solve_ls_problem(::PivotBasedSolvers, projected_KRP, project_target, rank)
-    direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+    direction = qr(array(dag(projected_KRP)), ColumnNorm()) \ transpose(array(project_target))
     i = ind(project_target, 1)
     return itensor(copy(transpose(direction)), i,rank)
 end
