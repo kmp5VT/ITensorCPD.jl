@@ -104,3 +104,14 @@ using ITensors: random_itensor
     cp2 = copy(cp1)
     @test isequal(cp1, cp2)
 end
+
+using Adapt: adapt
+@testset "Adapt function" begin
+    i, j, k = Index.((5, 5, 5))
+    T = random_itensor(Float64, i, j, k)
+    r = Index(5, "CPD")
+    cpf64 = random_CPD(T, r)
+
+    cpf32 = adapt(Float32, cpf64)
+    @test eltype(cpf32) == Float32
+end

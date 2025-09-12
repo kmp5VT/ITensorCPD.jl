@@ -2,6 +2,7 @@ using ITensors
 using ITensors: Indices
 using ITensors.NDTensors: similartype
 using Random
+using Adapt
 
 struct CPD{TargetT}
     factors::Vector{ITensor}
@@ -76,3 +77,5 @@ function random_CPD(target::ITensorNetwork, rank::Index; rng = nothing)
 
     return CPD{ITensorNetwork}(factors, lambda)
 end
+
+Adapt.adapt(type, cpd::CPD) = CPD{paramT(cpd)}([adapt(type, fact) for fact in cpd.factors], adapt(type, cpd.λ), cpd.inds)
