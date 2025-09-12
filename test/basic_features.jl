@@ -105,6 +105,7 @@ using ITensors: random_itensor
     @test isequal(cp1, cp2)
 end
 
+using Adapt: adapt
 @testset "Adapt function" begin
     i, j, k = Index.((5, 5, 5))
     T = random_itensor(Float64, i, j, k)
