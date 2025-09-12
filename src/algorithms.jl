@@ -126,7 +126,8 @@ function project_target(::PivotBasedSolvers, als, factors, cp, rank::Index, fact
 end
 
 function solve_ls_problem(::PivotBasedSolvers, projected_KRP, project_target, rank)
-    direction = qr(array(dag(projected_KRP)), ColumnNorm()) \ transpose(array(project_target))
+    # direction = qr(array(dag(projected_KRP)), ColumnNorm()) \ transpose(array(project_target))
+    direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
     i = ind(project_target, 1)
     return itensor(copy(transpose(direction)), i,rank)
 end
