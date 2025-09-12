@@ -83,7 +83,7 @@ function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequenc
     C = similar(cslice, (inds(cslice)..., had))
     #ITensor(zeros(eltype(cslice), dim(had) * dim(cslice)), (had, inds(cslice)...))
     slices_c = eachslice(array(C); dims = ndims(C))
-    slices_c[1] .= cslice
+    slices_c[1] .= array(cslice)
 
     ## TODO concat lists in a memory free way? all things are already stored in memory so if I could 
     ## make a list of pointers to the start of all these lists that would be cheap.
