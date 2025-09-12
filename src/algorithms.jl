@@ -35,9 +35,8 @@ abstract type MttkrpAlgorithm end
 
     ## Default algorithm uses the pivoted QR to solve LS problem.
     function solve_ls_problem(::MttkrpAlgorithm,krp, mtkrp, rank)
-        ## potentially better to first inverse the grammian then contract
-        ## qr(A, Val(true))
-        solution = qr(array(dag(krp)), ColumnNorm()) \ transpose(array(mtkrp))
+        # solution = qr(array(dag(krp)), ColumnNorm()) \ transpose(array(mtkrp))
+        solution = qr(array(dag(krp))) \ transpose(array(mtkrp))
         i = ind(mtkrp, 1)
         return itensor(copy(transpose(solution)), i,rank)
     end
