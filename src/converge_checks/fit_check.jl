@@ -21,9 +21,9 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     fact_square = norm_factors(partial_gram, λ)
     normResidual =
         real(sqrt(abs(check.ref_norm * check.ref_norm + fact_square - 2 * abs(inner_prod))))
-    curr_fit = 1.0 - (normResidual / check.ref_norm)
+    curr_fit = 1.0 - real(normResidual / check.ref_norm)
     Δfit = abs(check.lastfit - curr_fit)
-    check.lastfit = real(curr_fit)
+    check.lastfit = (curr_fit)
 
     if (verbose)
         println("$(dim(rank))\t $(check.iter) \t $(curr_fit) \t $(Δfit)")
