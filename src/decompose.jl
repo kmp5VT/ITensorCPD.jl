@@ -20,7 +20,7 @@ function decompose(
     end
 end
 
-function ITensorCPD.decompose(
+function decompose(
     A,
     epsilon,
     max_rank::Int;
@@ -40,7 +40,7 @@ function ITensorCPD.decompose(
     check = isnothing(check) ? FitCheck(1e-3, 100, norm(A)) : check
     while true
         cpd = als_optimize(A, cpd; alg, check, maxiter, verbose);
-        if 1.0 - ITensorCPD.fit(check) < epsilon
+        if 1.0 - ITensorCPD.CPDFit(check) < epsilon
             return cpd
         else
             current_rank += rank_step;
