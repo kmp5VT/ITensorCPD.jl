@@ -20,10 +20,10 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     inner_prod = sum(hadamard_product(check.MttKRP, had_contract(dag(factors[end]), dag(λ), rank)))
     fact_square = norm_factors(partial_gram, λ)
     normResidual =
-        sqrt(abs(check.ref_norm * check.ref_norm + fact_square - 2 * abs(inner_prod)))
+        real(sqrt(abs(check.ref_norm * check.ref_norm + fact_square - 2 * abs(inner_prod))))
     curr_fit = 1.0 - (normResidual / check.ref_norm)
     Δfit = abs(check.lastfit - curr_fit)
-    check.lastfit = curr_fit
+    check.lastfit = real(curr_fit)
 
     if (verbose)
         println("$(dim(rank))\t $(check.iter) \t $(curr_fit) \t $(Δfit)")
