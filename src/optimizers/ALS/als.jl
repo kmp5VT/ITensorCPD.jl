@@ -195,6 +195,59 @@ function compute_als(
 end
 
 function compute_als(
+    alg::SEQRCSPivProjected,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+)
+    lst = random_modes(alg)
+    lst = isnothing(lst) ? [] : lst
+    
+    pivots = Vector{Vector{Int}}()
+    projectors = Vector{ITensor}()
+    targets = Vector{ITensor}()
+    piv_id = nothing
+    for (i, n) in zip(inds(target), 1:length(cp))
+        Ris = uniqueinds(target, i)
+
+        dRis = dim(Ris)
+        int_end = stop(alg)
+        int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
+        int_end = iszero(int_end) ? dRis : int_end
+        int_end = dRis < int_end ? dRis : int_end
+
+        int_start = start(alg)
+        int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
+        @assert int_start > 0 && int_start ≤ int_end
+
+        # TODO Use the randomized linear algebra to remove the need to form the matricized tensor.
+        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
+        if n in lst
+            m = dim(i)
+            l=Int(round(3 * m * log(m))) #sketching dimension
+            s=Int(round(log(m)))
+            _,_,p = SEQRCS(target,n,i,l,s,dim(int_end),100)
+        else
+            _, _, p = qr(Tmat, ColumnNorm())
+        end
+        push!(pivots, p)
+
+        ndim = int_end - int_start + 1
+        piv_id = Index(ndim, "pivot")
+
+        push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
+        TP = fused_flatten_sample(target, n, projectors[n])
+    push!(targets, TP)
+    end
+    extra_args[:projects] = pivots
+    extra_args[:projects_tensors] = projectors
+    extra_args[:target_transform] = targets
+    
+    return ALS(target, alg, extra_args, check)
+end
+
+function compute_als(
     alg::LevScoreSampled,
     target::ITensor,
     cp::CPD{<:ITensor};
