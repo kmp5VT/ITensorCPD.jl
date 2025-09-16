@@ -268,7 +268,7 @@ end
 ## each tensor must be a matrix with one matching mode. See above for a full description.
 ## This function works for a list of tensors to be fused via the Khatri-Rao product.
 ## This will assume that the pivots are concatinated into an array
-function pivot_hadamard(tensors::Vector{<:ITensor}, had::Index, pivots::Matrix, piv_ind::Union{<:Nothing, <:Index} = nothing)
+function pivot_hadamard(tensors, had::Index, pivots::Matrix, piv_ind::Union{<:Nothing, <:Index} = nothing)
     for tensor in tensors
         @assert had == ind(tensor, 2)
     end
