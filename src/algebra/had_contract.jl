@@ -256,9 +256,9 @@ function pivot_hadamard(tensors::Vector{<:ITensor}, had::Index, pivots::ITensor)
     is = [commonind(pivots,x) for x in tensors]
 
     npivs = column_to_multi_coords(data(pivots), dim.(is))
-    prod = ones(eltype(tensors[1]), size(npivs)[1], dim(had))
+    prod = typeof(array(tensors[1]))(ones(eltype(tensors[1]), size(npivs)[1], dim(had)))
     for (tensor, i) in zip(tensors, 1:length(tensors))
-        prod .*= array(tensor)[npivs[:,i], :]
+        prod .*= (@view array(tensor)[npivs[:,i], :])
     end
     
     return itensor(prod, inds(pivots)[end], had)
