@@ -167,7 +167,7 @@ function compute_als(
     for (i, n) in zip(inds(target), 1:length(cp))
         Ris = uniqueinds(target, i)
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
-        _, _, p = qr(Tmat, ColumnNorm())
+        _, _, p = qr(NDTensors.cpu(Tmat), ColumnNorm())
         push!(pivots, p)
 
         dRis = dim(Ris)
