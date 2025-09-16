@@ -36,6 +36,8 @@ function Base.copy(cp::CPD{T}) where {T}
 end
 
 Base.eltype(cp::CPD) = return eltype(cp.λ)
+## This iterates on the factor matrices only.
+Base.iterate(cp::CPD, i::Int) = return Base.iterate(cp.factors, i)
 
 function random_factors(elt::Union{<:Type, Nothing}, is::Indices, rank::Index; rng=nothing)
     @assert !isnothing(elt)
