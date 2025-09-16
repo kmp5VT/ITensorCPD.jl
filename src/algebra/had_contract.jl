@@ -175,7 +175,7 @@ function had_contract(
     C = similar(cslice, (inds(cslice)..., had))
 
     slices_c = eachslice(array(C); dims = ndims(C))
-    slices_c[1] .= cslice
+    slices_c[1] .= array(cslice)
 
     for i = 2:dim(had)
         slice = ITensorNetwork(
