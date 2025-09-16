@@ -17,7 +17,7 @@ jobs:
       matrix:
         version:
           - 'lts'
-          - '1'
+          - '1.11.6'
         os:
           - ubuntu-latest
         threads:

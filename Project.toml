@@ -1,7 +1,7 @@
 name = "ITensorCPD"
 uuid = "8ca0d870-8743-11ef-3aad-a3ebf6911431"
 authors = ["Karl Pierce <kpierce@flatironinstitute.org>"]
-version = "0.0.2"
+version = "0.0.3"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -17,4 +17,5 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [compat]
 LinearAlgebra = "1.10.0"
+StatsBase = "0.34.6"
 julia = "1.10"

@@ -114,7 +114,8 @@ abstract type MttkrpAlgorithm end
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
         end
 
-        ################
+
+    ################
     ## This solver is based on ITensorNetwork
     ## It allows one to take a completely connected 
     ## ITensorNetwork and decomposes it into a CPD
@@ -211,8 +212,7 @@ abstract type ProjectionAlgorithm end
         return false
     end
 
-
-        ### With this solver we are going to compute sampling projectors for LS decomposition
+    ### With this solver we are going to compute sampling projectors for LS decomposition
     ### based on the leverage score of the factor matrices. Then we are going to solve a
     ### sampled least squares problem 
     struct LevScoreSampled <: ProjectionAlgorithm
@@ -304,13 +304,12 @@ abstract type ProjectionAlgorithm end
             als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact))
         end
 
-
     ### With this solver we are trying to solve the modified least squares problem
     ### || T(a,b,c) P(b,c,l) - A(a,m) (B(b,m) ⊙ C(c,m)) P(b,c,l) ||² (and equivalent for all other factor matrices)
     ### In order to solve this equation we need the following to be true P(b,c l) P(b',c', l) ≈ I(b,c,b',c')
     ### One easy way to do this is to make P a pivot matrix from a QR or LU. We will form P by taking the pivoted QR
     ### of T and choose a set certain number of pivots in each row.
-    struct QRPivProjected{Start,End} <: MttkrpAlgorithm end
+    struct QRPivProjected{Start,End} <: ProjectionAlgorithm end
 
         ## TODO modify to use ranges 
         QRPivProjected() = QRPivProjected{(1,),(0,)}()
@@ -323,7 +322,7 @@ abstract type ProjectionAlgorithm end
     ### QR method is replaced with a custom algorithm for randomized pivoted QR.
     ### The SEQRCS was developed by Israa Fakih and Laura Grigori (DOI: )
     ### The randomized method is only included for specified modes
-    struct SEQRCSPivProjected{Start,End} <: MttkrpAlgorithm
+    struct SEQRCSPivProjected{Start,End} <: ProjectionAlgorithm
         random_modes::Union{<:Tuple, Nothing}
     end
 
@@ -355,7 +354,7 @@ abstract type ProjectionAlgorithm end
             return ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
         end
 
-        function project_target(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int, krp)
+        function matricize_tensor(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
             ## This computes the projected MTTKRP
             # return als.additional_items[:target_transform][fact] * ITensorCPD.pivot_hadamard(dag.(factors), rank, als.additional_items[:projects_tensors][fact])
             return als.additional_items[:target_transform][fact]
