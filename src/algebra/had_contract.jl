@@ -288,10 +288,10 @@ function omega_hadamard(tensors, had::Index, omega)
     for tensor in tensors
         @assert had == ind(tensor, 2)
     end
-    is = [first(filter(ind -> ind != had, inds(tensor))) for tensor in tensors]
+    is = [ind(tensor, 1) for tensor in tensors]
 
     l = size(omega,1)
-    s_prod = zeros(eltype(tensors[1]), l, dim(had))
+    s_prod = Array{eltype(tensors[1])}(undef, l, dim(had))
 
     for j in 1:l
         nnz_ind = findall(!iszero, omega[j,:])
@@ -299,7 +299,7 @@ function omega_hadamard(tensors, had::Index, omega)
         kr_prod = ones(eltype(tensors[1]), size(npivs,1), dim(had))
         signs = omega[j, nnz_ind];
         for (tensor, i) in zip(tensors, 1:length(tensors))
-            kr_prod .*= array(tensor)[npivs[:,i], :]
+            kr_prod .*= @view array(tensor)[npivs[:,i], :]
         end
         kr_prod .*= signs[:,]
         s_prod[j,:] = sum(kr_prod, dims=1)
