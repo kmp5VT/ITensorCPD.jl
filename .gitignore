@@ -1,1 +1,4 @@
 settings.json
+*.so
+*.dylib
+*.dll

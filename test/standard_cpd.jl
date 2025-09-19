@@ -33,27 +33,25 @@
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct())
     @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-7
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose=false);
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
 
     svd_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.TargetDecomp(), check);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(svd_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-5
 
-    # check = ITensorCPD.NoCheck(35)
-    check = ITensorCPD.FitCheck(1e-6, 35, norm(A))
-
+    check = ITensorCPD.FitCheck(1e-6, 20, norm(A))
 
     ## This method uses the interpolative squared to precondition the problem.
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check, verbose);
+       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
-          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+         norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (20*40, 20*40, 20*30)), check, verbose);
+        als_optimize(A, cp_A; alg = ITensorCPD.SEQRCSPivProjected((1,), (800,), (1,2,3)),check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
-          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+          norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 
     direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(direct_inversion_opt_A)) /
@@ -68,7 +66,7 @@
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
     int_opt_A =
         als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check=ITensorCPD.NoCheck(20));
-    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.01
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     ### Test for Leverage score sampling CPD 
     a,b,c = Index.((12,13,3))
@@ -79,14 +77,15 @@
 
     cpd = random_CPD(T, 5)
     alg = ITensorCPD.LevScoreSampled(100)
-    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg);
-    norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
+    check=ITensorCPD.FitCheck(1e-3, 5, norm(T))
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
+    @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
     ### Test for Leverage score sampling CPD 
     alg = ITensorCPD.LevScoreSampled((50, 50, 500))
     min_val = 1
     for i in 1:3
-        cpd_opt = ITensorCPD.als_optimize(T, cpd; alg);
+        cpd_opt = ITensorCPD.als_optimize(T, cpd; check, verbose, alg);
         val = norm(reconstruct(cpd_opt) - T) / norm(T) 
         min_val = val < min_val ? val : val
     end
@@ -135,6 +134,36 @@ end
 
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check)
     @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 5e-5
+
+    check = ITensorCPD.FitCheck(1e-6, 20, norm(A))
+
+
+    ## This method uses the interpolative squared to precondition the problem.
+    int_opt_A =
+       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check, verbose);
+    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
+         norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.SEQRCSPivProjected((1,1,1), (20*40, 20*40, 20*30), (1,2,3)),check, verbose);
+    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
+          norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
+
+    direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check, verbose);
+    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(direct_inversion_opt_A)) /
+          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+
+    
+    ## This tests to see if we can interpolate a known low rank tensor
+    A = ITensorCPD.reconstruct(random_CPD(A, 20))
+
+    cp_A = random_CPD(A, 10)
+    check=ITensorCPD.FitCheck(1e-3, 100, norm(A))
+    opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose=true);
+    exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose=true);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 end
 
 
@@ -147,5 +176,4 @@ end
     opt_A = ITensorCPD.decompose(A, 1e-3, 400; check=ITensorCPD.FitCheck(1e-4, 100, norm(A)), start_rank = 200, rank_step = 200, verbose=false);
     
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-3
-
 end

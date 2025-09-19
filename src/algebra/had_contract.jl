@@ -48,7 +48,7 @@ end
 ## for example D(i,k,r) = A(i,j,r) * B(j,r,k) C(k,l) = ∀ rᵢ D_rᵢ(i,l) = (A_rᵢ(i,j) B_rᵢ(j,k)) C(k,l)
 ## The variable `sequence` can be provided to specify the contraction sequence of the subnetwork problems.
 ## if sequence == nothing then the optimal path will be computed.
-function had_contract(tensors::Vector{<:ITensor}, had::Index; α = true, sequence = nothing)
+function had_contract(tensors, had::Index; α = true, sequence = nothing)
     had_tensors = Vector{Int}() 
     no_had = Vector{Int}() 
 
@@ -247,7 +247,7 @@ end
 ## This function is special tensor product derived from the khatri-rao product
 ## each tensor must be a matrix with one matching mode. See above for a full description.
 ## This function works for a list of tensors to be fused via the Khatri-Rao product.
-function pivot_hadamard(tensors::Vector{<:ITensor}, had::Index, pivots::ITensor)
+function pivot_hadamard(tensors, had::Index, pivots::ITensor)
     for tensor in tensors
         @assert had == ind(tensor, 2)
     end
@@ -263,12 +263,11 @@ function pivot_hadamard(tensors::Vector{<:ITensor}, had::Index, pivots::ITensor)
     
     return itensor(prod, inds(pivots)[end], had)
 end
-
 ## This function is special tensor product derived from the khatri-rao product
 ## each tensor must be a matrix with one matching mode. See above for a full description.
 ## This function works for a list of tensors to be fused via the Khatri-Rao product.
 ## This will assume that the pivots are concatinated into an array
-function pivot_hadamard(tensors::Vector{<:ITensor}, had::Index, pivots::Matrix, piv_ind::Union{<:Nothing, <:Index} = nothing)
+function pivot_hadamard(tensors, had::Index, pivots::Matrix, piv_ind::Union{<:Nothing, <:Index} = nothing)
     for tensor in tensors
         @assert had == ind(tensor, 2)
     end
@@ -281,4 +280,30 @@ function pivot_hadamard(tensors::Vector{<:ITensor}, had::Index, pivots::Matrix, 
     
     piv_ind = isnothing(piv_ind) ? Index(npivs, "PivIdx") : piv_ind
     return itensor(prod, piv_ind, had)
+end
+## This function works on a list of tensors and a sparse matrix omega 
+## to directly sketch the Khatri–Rao product
+## All the tesnors should be matrices
+function omega_hadamard(tensors, had::Index, omega)
+    for tensor in tensors
+        @assert had == ind(tensor, 2)
+    end
+    is = [ind(tensor, 1) for tensor in tensors]
+
+    l = size(omega,1)
+    s_prod = Array{eltype(tensors[1])}(undef, l, dim(had))
+
+    for j in 1:l
+        nnz_ind = findall(!iszero, omega[j,:])
+        npivs = column_to_multi_coords(nnz_ind, dim.(is))
+        kr_prod = ones(eltype(tensors[1]), size(npivs,1), dim(had))
+        signs = omega[j, nnz_ind];
+        for (tensor, i) in zip(tensors, 1:length(tensors))
+            kr_prod .*= @view array(tensor)[npivs[:,i], :]
+        end
+        kr_prod .*= signs[:,]
+        s_prod[j,:] = sum(kr_prod, dims=1)
+    end
+
+    return itensor(s_prod, Index(l,"l"), had)
 end
