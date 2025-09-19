@@ -37,6 +37,7 @@ end
 
 Base.eltype(cp::CPD) = return eltype(cp.λ)
 ## This iterates on the factor matrices only.
+Base.iterate(cp::CPD) = return Base.iterate(cp.factors)
 Base.iterate(cp::CPD, i::Int) = return Base.iterate(cp.factors, i)
 
 function random_factors(elt::Union{<:Type, Nothing}, is::Indices, rank::Index; rng=nothing)
