@@ -222,13 +222,13 @@ function compute_als(
         @assert int_start > 0 && int_start ≤ int_end
 
         # TODO Use the randomized linear algebra to remove the need to form the matricized tensor.
-        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
         if n in lst
             m = dim(i)
             l=Int(round(3 * m * log(m))) #sketching dimension
             s=Int(round(log(m)))
             _,_,p = SEQRCS(target,n,i,l,s,dim(int_end),100)
         else
+            Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
             _, _, p = qr(Tmat, ColumnNorm())
         end
         push!(pivots, p)
