@@ -331,6 +331,7 @@ abstract type ProjectionAlgorithm end
         SEQRCSPivProjected(n::Int) = SEQRCSPivProjected{(1,),(n,)}(nothing)
         SEQRCSPivProjected(n::Int, m::Int) = SEQRCSPivProjected{(n,),(m,)}(nothing)
         SEQRCSPivProjected(n::Int, m::Int, mode::Int) = SEQRCSPivProjected{(n,),(m,)}((mode,))
+        SEQRCSPivProjected(n::Int, m::Int, modes::Tuple) = SEQRCSPivProjected{(n,),(m,)}(modes)
         SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected{Tuple(Int.(ones(length(n)))),n}(nothing)
         SEQRCSPivProjected(n::Tuple, m::Tuple) = SEQRCSPivProjected{n,m}(nothing)
         SEQRCSPivProjected(n::Tuple, m::Tuple, modes::Tuple) = SEQRCSPivProjected{n,m}(modes)
