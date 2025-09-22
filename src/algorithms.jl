@@ -221,7 +221,7 @@ abstract type ProjectionAlgorithm end
     end
 
         # What happens when sampling is 0?
-        LevScoreSampled() = LevScoreSampled{(0,)}()
+        LevScoreSampled() = LevScoreSampled((1,))
         LevScoreSampled(n::Int) = LevScoreSampled((n,))
 
         nsamples(alg::LevScoreSampled) = alg.NSamples

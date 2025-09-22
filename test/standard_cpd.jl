@@ -78,9 +78,12 @@
     T = reconstruct(cpdT)
 
     cpd = random_CPD(T, 5)
+    alg = ITensorCPD.LevScoreSampled()
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg);
+
     alg = ITensorCPD.LevScoreSampled(100)
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg);
-    norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
+    @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
     ### Test for Leverage score sampling CPD 
     alg = ITensorCPD.LevScoreSampled((50, 50, 500))
