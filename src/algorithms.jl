@@ -185,7 +185,7 @@ abstract type ProjectionAlgorithm end
 
     ## Default algorithm to compute the KRP: This computes a projected/sampled KRP
     function compute_krp(::ProjectionAlgorithm, als, factors, cp, rank, fact)
-        factor_portion = factors[1:end .!= fact]
+        factor_portion = @view factors[1:end .!= fact]
         return project_krp(als.mttkrp_alg, als, factor_portion, cp, rank, fact)
     end
 
