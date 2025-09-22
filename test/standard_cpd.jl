@@ -76,6 +76,9 @@
     T = reconstruct(cpdT)
 
     cpd = random_CPD(T, 5)
+    alg = ITensorCPD.LevScoreSampled()
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg);
+
     alg = ITensorCPD.LevScoreSampled(100)
     check=ITensorCPD.FitCheck(1e-3, 5, norm(T))
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
