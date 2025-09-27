@@ -71,18 +71,17 @@ end
 ## This function takes a higher order tensor and a sparse matrix
 ## and gives the sketched matricization of the tensor
 
-function  sketched_matricization(T:: ITensor, k::Int, omega)
+function  sketched_matricization(T::ITensor, k::Int, omega)
   v = vec(NDTensors.data(T))
   l = size(omega,2)
   idx = ind(T, k)
-  As = zeros(eltype(T), dim(idx), l)
+  As = similar(NDTensors.similartype(T.tensor), dim(idx), l)
+  As_slice = eachcol(As)
+  Om_slice = eachcol(omega)
+  stride = strides(T.tensor)[k]
   for j in 1:l
-    w = findall(!iszero,omega[:,j])
-    stride = strides(T.tensor)[k]
-    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), w)
-    for i in 1:dim(idx)
-      array(As)[i,j] = sum(@view v[pos .+ stride* (i-1)])
-    end
+    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), findall(!iszero,@view Om_slice[j]))
+    As_slice[j] .= [sum(@view v[pos .+ stride* (i-1)]) for i in 1:dim(idx)]
   end
   return As
 end
