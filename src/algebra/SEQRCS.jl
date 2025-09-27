@@ -60,7 +60,7 @@ Performs Randomized QR to a matrix 'A' for a given rank 'k'
 """
 function SEQRCS(A:: ITensor,mode::Int,i,l,s,k,t)
     Ris = uniqueinds(A, i)         
-    n = prod(dim.(Ris)) 
+    n = dim(Ris)
 
     # Generate sparse embedding
     omega = sparse_sign_matrix(l,n,s)
