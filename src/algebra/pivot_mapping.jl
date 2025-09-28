@@ -75,7 +75,7 @@ function  sketched_matricization(T::ITensor, k::Int, omega)
   v = vec(NDTensors.data(T))
   l = size(omega,2)
   idx = ind(T, k)
-  As = similar(NDTensors.similartype(T.tensor), dim(idx), l)
+  As = similar(NDTensors.similartype(NDTensors.data(T), (1,2)), dim(idx), l)
   As_slice = eachcol(As)
   Om_slice = eachcol(omega)
   stride = strides(T.tensor)[k]
