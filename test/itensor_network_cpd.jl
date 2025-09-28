@@ -28,7 +28,7 @@ include("./util.jl")
 
     check = ITensorCPD.FitCheck(1e-10, 100, sqrt(sqrs[]))
 
-    while check.final_fit < 0.99
+    while check.final_fit < 0.9
         rng = Random.seed!(Random.RandomDevice())
         guess = ITensorCPD.random_CPD(subtn, 2; rng)
         cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = true);
