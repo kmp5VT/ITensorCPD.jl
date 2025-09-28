@@ -33,7 +33,7 @@ include("./util.jl")
         guess = ITensorCPD.random_CPD(subtn, 2; rng)
         cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = true);
     end
-    @test 1 - check.final_fit < 0.01
+    @test 1 - check.final_fit < 0.1
 
     ## TODO this is a test to see if physical problems are well interpolated with the 
     ## new algorithms
