@@ -49,7 +49,7 @@
          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.SEQRCSPivProjected((1,), (800,), (1,2,3)),check, verbose);
+        als_optimize(A, cp_A; alg = ITensorCPD.SEQRCSPivProjected((1,), (800,), (1,2,3),(100,100,100)),check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 
@@ -148,7 +148,7 @@ end
          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.SEQRCSPivProjected((1,1,1), (20*40, 20*40, 20*30), (1,2,3)),check, verbose);
+        als_optimize(A, cp_A; alg = ITensorCPD.SEQRCSPivProjected((1,1,1), (20*40, 20*40, 20*30), (1,2,3),(100,100,100)),check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 

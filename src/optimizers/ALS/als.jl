@@ -203,7 +203,7 @@ function compute_als(
 )
     lst = random_modes(alg)
     lst = isnothing(lst) ? [] : lst
-    
+    rank_sk = rank_vect(alg)
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
@@ -223,10 +223,11 @@ function compute_als(
 
         # TODO Use the randomized linear algebra to remove the need to form the matricized tensor.
         if n in lst
+            k_sk = isnothing(rank_sk) ? int_end[n] : rank_sk[n]
             m = dim(i)
-            l=Int(round(3 * m * log(m))) #sketching dimension
+            l=Int(round(3 * m * log(m))) 
             s=Int(round(log(m)))
-            _,_,p = SEQRCS(target,n,i,l,s,dim(int_end),100)
+             _,_,p = SEQRCS(target,n,i,l,s,k_sk)
         else
             Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
             _, _, p = qr(Tmat, ColumnNorm())

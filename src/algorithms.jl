@@ -322,21 +322,23 @@ abstract type ProjectionAlgorithm end
     ### QR method is replaced with a custom algorithm for randomized pivoted QR.
     ### The SEQRCS was developed by Israa Fakih and Laura Grigori (DOI: )
     ### The randomized method is only included for specified modes
-    struct SEQRCSPivProjected{Start,End} <: ProjectionAlgorithm
-        random_modes::Union{<:Tuple, Nothing}
-    end
+    
+struct SEQRCSPivProjected{Start,End} <: ProjectionAlgorithm
+    random_modes::Union{<:Tuple, Nothing}
+    rank_vect :: Union{<:Tuple, Nothing}
+end
 
-        ## TODO modify to use ranges 
-        SEQRCSPivProjected() = SEQRCSPivProjected{(1,),(0,)}(nothing)
-        SEQRCSPivProjected(n::Int) = SEQRCSPivProjected{(1,),(n,)}(nothing)
-        SEQRCSPivProjected(n::Int, m::Int) = SEQRCSPivProjected{(n,),(m,)}(nothing)
-        SEQRCSPivProjected(n::Int, m::Int, mode::Int) = SEQRCSPivProjected{(n,),(m,)}((mode,))
-        SEQRCSPivProjected(n::Int, m::Int, modes::Tuple) = SEQRCSPivProjected{(n,),(m,)}(modes)
-        SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected{Tuple(Int.(ones(length(n)))),n}(nothing)
-        SEQRCSPivProjected(n::Tuple, m::Tuple) = SEQRCSPivProjected{n,m}(nothing)
-        SEQRCSPivProjected(n::Tuple, m::Tuple, modes::Tuple) = SEQRCSPivProjected{n,m}(modes)
+    ## TODO modify to use ranges 
+    SEQRCSPivProjected() = SEQRCSPivProjected{(1,),(0,)}(nothing, nothing)
+    SEQRCSPivProjected(n::Int) = SEQRCSPivProjected{(1,),(n,)}(nothing,nothing)
+    SEQRCSPivProjected(n::Int, m::Int, mode::Union{Int,Nothing}=nothing, rank_vect::Union{Int,Nothing}=nothing) =
+    SEQRCSPivProjected{(n,),(m,)}(isnothing(mode) ? nothing : (mode,),isnothing(rank_vect) ? nothing : (rank_vect,))
+    SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected{Tuple(Int.(ones(length(n)))),n}(nothing,nothing)
+    SEQRCSPivProjected(n::Tuple, m::Tuple, modes::Union{Tuple,Nothing}=nothing, rank_vect::Union{Tuple,Nothing}=nothing) =
+    SEQRCSPivProjected{n,m}(isnothing(modes) ? nothing : modes,isnothing(rank_vect) ? nothing : rank_vect)
 
-        random_modes(alg::SEQRCSPivProjected) = alg.random_modes
+    random_modes(alg::SEQRCSPivProjected) = alg.random_modes
+    rank_vect(alg::SEQRCSPivProjected) = alg.rank_vect
 
     ## This is a union class so that the operations work on both pivot based solver algorithms
     const PivotBasedSolvers{N,M} = Union{QRPivProjected{N,M}, SEQRCSPivProjected{N,M}}
