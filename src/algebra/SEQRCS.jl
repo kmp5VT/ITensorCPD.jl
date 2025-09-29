@@ -58,7 +58,7 @@ Performs Randomized QR to a matrix 'A' for a given rank 'k'
 
 
 """
-function SEQRCS(A:: ITensor,mode::Int,i,l,s,k,t)
+function SEQRCS(A:: ITensor,mode::Int,i,l,s,t)
     Ris = uniqueinds(A, i)         
     n = dim(Ris)
 
