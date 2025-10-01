@@ -22,7 +22,7 @@ module ITensorCPD
           error("Unsupported OS")
 
     if(!isfile(joinpath(@__DIR__, "algebra", "libsparse_sign" * lib_ext)))
-      include("../deps/build.jl")
+      include("$(@__DIR__)/../deps/build.jl")
     end
 
     global libsparse = joinpath(@__DIR__, "algebra", "libsparse_sign" * lib_ext)
