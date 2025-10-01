@@ -206,18 +206,18 @@ abstract type ProjectionAlgorithm end
             end
             als.check.iter += 1
             if verbose
-            inner_prod = (had_contract([als.target, dag.(factors)...], cprank) * dag(λ))[]
-            partial_gram = [fact * dag(prime(fact; tags=tags(cprank))) for fact in factors];
-            fact_square = ITensorCPD.norm_factors(partial_gram, λ)
-            normResidual =
-                sqrt(abs(als.check.ref_norm * als.check.ref_norm + fact_square - 2 * abs(inner_prod)))
+                inner_prod = (had_contract([als.target, dag.(factors)...], cprank) * dag(λ))[]
+                partial_gram = [fact * dag(prime(fact; tags=tags(cprank))) for fact in factors];
+                fact_square = ITensorCPD.norm_factors(partial_gram, λ)
+                normResidual =
+                    sqrt(abs(als.check.ref_norm * als.check.ref_norm + fact_square - 2 * abs(inner_prod)))
                 println("$(dim(cprank))\t$(als.check.iter)\t$(1.0 - normResidual / norm(als.check.ref_norm))")
-        end
+            end
             if als.check.iter == als.check.max_counter
                 als.check.iter = 0
             end
-        return false
-    end
+            return false
+        end
 
         return check_converge(converge, factors, λ,  []; verbose)
     end

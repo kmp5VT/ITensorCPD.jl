@@ -1,3 +1,7 @@
+## In this code I will compute the Fit (norm difference) between a CP and the true tensor.
+##  If the distance between two consecutive fits are small, the calculation is stopped.
+## || T - \hat{T}_{n} || / || T || < ϵ 
+
 mutable struct FitCheck <: ConvergeAlg
     iter::Int
     counter::Int
@@ -50,14 +54,6 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     end
 
     return false
-end
-
-function norm_factors(partial_gram::Vector, λ::ITensor)
-    had = copy(partial_gram[1])
-    for i = 2:length(partial_gram)
-        hadamard_product!(had, had, partial_gram[i])
-    end
-    return (had*(λ*dag(prime(λ))))[]
 end
 
 CPDFit(check::FitCheck) = check.final_fit
