@@ -3,7 +3,9 @@
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
     A = random_itensor(elt, i, j, k)
+
     ## Calling decompose
+    
     opt_A = ITensorCPD.decompose(A, r);
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
 
@@ -60,24 +62,26 @@
     
     ## This tests to see if we can interpolate a known low rank tensor
     A = ITensorCPD.reconstruct(random_CPD(A, 20))
+    check = ITensorCPD.CPDiffCheck(1e-5, 100)
 
     cp_A = random_CPD(A, 10)
-    opt_A = ITensorCPD.als_optimize(A, cp_A; check=ITensorCPD.FitCheck(1e-3, 100, norm(A)), verbose=true);
+    opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose);
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check=ITensorCPD.NoCheck(20));
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     ### Test for Leverage score sampling CPD 
     a,b,c = Index.((12,13,3))
-    T = random_itensor(a,b,c)
+    T = random_itensor(elt, a,b,c)
 
     cpdT = random_CPD(T, 5)
     T = reconstruct(cpdT)
 
     cpd = random_CPD(T, 5)
     alg = ITensorCPD.LevScoreSampled()
-    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg);
+    check = ITensorCPD.CPDiffCheck(1e-5, 10)
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
 
     alg = ITensorCPD.LevScoreSampled(100)
     check=ITensorCPD.FitCheck(1e-3, 5, norm(T))
@@ -88,7 +92,7 @@
     alg = ITensorCPD.LevScoreSampled((50, 50, 500))
     min_val = 1
     for i in 1:3
-        cpd_opt = ITensorCPD.als_optimize(T, cpd; check, verbose, alg);
+        cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
         val = norm(reconstruct(cpd_opt) - T) / norm(T) 
         min_val = val < min_val ? val : val
     end
@@ -167,6 +171,22 @@ end
     int_opt_A =
         als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose=true);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
+    ### Test for Leverage score sampling CPD 
+    a,b,c = Index.((12,13,3))
+    T = random_itensor(elt, a,b,c)
+
+    cpdT = random_CPD(T, 5)
+    T = reconstruct(cpdT)
+
+    cpd = random_CPD(T, 5)
+    alg = ITensorCPD.LevScoreSampled()
+    check = ITensorCPD.CPDiffCheck(1e-5, 10)
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
+
+    alg = ITensorCPD.LevScoreSampled(100)
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
+    @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 end
 
 
