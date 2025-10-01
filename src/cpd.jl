@@ -10,6 +10,8 @@ struct CPD{TargetT}
     inds::Vector{Index}
 end
 
+CPD() = CPD{nothing}(Vector{ITensor}(), ITensor(), Vector{Index}())
+
 function CPD{TargetT}(factors::Vector{ITensor}, λ::ITensor) where {TargetT}
     is = [ind(x, 1) for x in factors]
     CPD{TargetT}(factors, λ, is)
