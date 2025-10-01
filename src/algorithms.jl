@@ -200,17 +200,26 @@ abstract type ProjectionAlgorithm end
 
         # save_mttkrp(converge, mtkrp)
         cprank = ind(λ, 1)
-        if als.check isa FitCheck && verbose
-            inner_prod = (had_contract([als.target, dag.(factors)...], cprank) * dag(λ))[]
-            partial_gram = [fact * dag(prime(fact; tags=tags(cprank))) for fact in factors];
-            fact_square = ITensorCPD.norm_factors(partial_gram, λ)
-            normResidual =
-                sqrt(abs(als.check.ref_norm * als.check.ref_norm + fact_square - 2 * abs(inner_prod)))
-            println("Accuracy: $(1.0 - normResidual / norm(als.check.ref_norm))")
+        if als.check isa FitCheck
+            if als.check.iter == 0
+                println("Warning: FitCheck is not enabled for $(als.mttkrp_alg) will run $(als.check.max_counter) iterations.")
+            end
+            als.check.iter += 1
+            if verbose
+                inner_prod = (had_contract([als.target, dag.(factors)...], cprank) * dag(λ))[]
+                partial_gram = [fact * dag(prime(fact; tags=tags(cprank))) for fact in factors];
+                fact_square = ITensorCPD.norm_factors(partial_gram, λ)
+                normResidual =
+                    sqrt(abs(als.check.ref_norm * als.check.ref_norm + fact_square - 2 * abs(inner_prod)))
+                println("$(dim(cprank))\t$(als.check.iter)\t$(1.0 - normResidual / norm(als.check.ref_norm))")
+            end
+            if als.check.iter == als.check.max_counter
+                als.check.iter = 0
+            end
+            return false
         end
 
-        # return check_converge(converge, factors, λ,  []; verbose)
-        return false
+        return check_converge(converge, factors, λ,  []; verbose)
     end
 
     ### With this solver we are going to compute sampling projectors for LS decomposition

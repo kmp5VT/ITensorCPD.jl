@@ -10,11 +10,11 @@ function compute_leverage_score_probabilitiy(A, row::Index)
 end
 
 function samples_from_probability_vector(PW::Vector, samples)
-  return Vector{Int}([sample([x for x in 1:length(PW)], Weights(PW)) for i in 1:samples])
+  return Vector{Int}([sample([x for x in 1:length(PW)], Weights(abs.(PW))) for i in 1:samples])
 end
 
 function sample_single_col_from_factors(skip_factor, probs)
-  return [sample([x for x in 1:length(prob)], Weights(prob)) for prob in probs[1:end .!= skip_factor]]
+  return [sample([x for x in 1:length(prob)], Weights(abs.(prob))) for prob in probs[1:end .!= skip_factor]]
 end
 ## uniform sampling of each factor matrix (no blocking)
 ## nsamps = Number of samples 
