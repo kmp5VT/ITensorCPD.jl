@@ -84,7 +84,7 @@ abstract type MttkrpAlgorithm end
         end
 
         function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) 
-            als.additional_items[:part_grammian][fact] =
+            als.additional_items[:part_grammian][fact] .=
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
         end
 
@@ -346,7 +346,7 @@ end
     ## TODO modify to use ranges 
     SEQRCSPivProjected() = SEQRCSPivProjected((1,), (0,), nothing, nothing)
     SEQRCSPivProjected(n::Int) = SEQRCSPivProjected((1,), (n,), nothing, nothing)
-    EQRCSPivProjected(n::Tuple) = SEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
+    SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
     SEQRCSPivProjected(n::Int, m::Int, rrmodes=nothing, rank_vect=nothing) = SEQRCSPivProjected((n,),(m,), rrmodes, rank_vect)
 
     random_modes(alg::SEQRCSPivProjected) = alg.random_modes
@@ -371,7 +371,7 @@ end
 
         function matricize_tensor(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
             ## This computes the projected MTTKRP
-            # return als.additional_items[:target_transform][fact] * ITensorCPD.pivot_hadamard(dag.(factors), rank, als.additional_items[:projects_tensors][fact])
+            # return als.additional_items[:target_transform][fact] *  ITensorCPD.pivot_hadamard(dag.(factors[1:end .!= fact]), rank, als.additional_items[:projects_tensors][fact])
             return als.additional_items[:target_transform][fact]
         end
 
