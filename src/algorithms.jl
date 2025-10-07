@@ -333,18 +333,21 @@ abstract type ProjectionAlgorithm end
     ### The randomized method is only included for specified modes
     
 struct SEQRCSPivProjected{Start,End} <: ProjectionAlgorithm
-    random_modes::Union{<:Tuple, Nothing}
-    rank_vect :: Union{<:Tuple, Nothing}
+    random_modes
+    rank_vect
+    
+    function SEQRCSPivProjected(n::Tuple, m::Tuple, rrmodes=nothing, rank_vect=nothing) 
+        rrmodes = isnothing(rrmodes) ? nothing : Tuple(rrmodes)
+        rank_vect = isnothing(rank_vect) ? nothing : Dict(rrmodes .=> Tuple(rank_vect))
+        new{n,m}(rrmodes, rank_vect)
+    end
 end
 
     ## TODO modify to use ranges 
-    SEQRCSPivProjected() = SEQRCSPivProjected{(1,),(0,)}(nothing, nothing)
-    SEQRCSPivProjected(n::Int) = SEQRCSPivProjected{(1,),(n,)}(nothing,nothing)
-    SEQRCSPivProjected(n::Int, m::Int, mode::Union{Int,Nothing}=nothing, rank_vect::Union{Int,Nothing}=nothing) =
-    SEQRCSPivProjected{(n,),(m,)}(isnothing(mode) ? nothing : (mode,),isnothing(rank_vect) ? nothing : (rank_vect,))
-    SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected{Tuple(Int.(ones(length(n)))),n}(nothing,nothing)
-    SEQRCSPivProjected(n::Tuple, m::Tuple, modes::Union{Tuple,Nothing}=nothing, rank_vect::Union{Tuple,Nothing}=nothing) =
-    SEQRCSPivProjected{n,m}(isnothing(modes) ? nothing : modes,isnothing(rank_vect) ? nothing : rank_vect)
+    SEQRCSPivProjected() = SEQRCSPivProjected((1,), (0,), nothing, nothing)
+    SEQRCSPivProjected(n::Int) = SEQRCSPivProjected((1,), (n,), nothing, nothing)
+    EQRCSPivProjected(n::Tuple) = SEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
+    SEQRCSPivProjected(n::Int, m::Int, rrmodes=nothing, rank_vect=nothing) = SEQRCSPivProjected((n,),(m,), rrmodes, rank_vect)
 
     random_modes(alg::SEQRCSPivProjected) = alg.random_modes
     rank_vect(alg::SEQRCSPivProjected) = alg.rank_vect
