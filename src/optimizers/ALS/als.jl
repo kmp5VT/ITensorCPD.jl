@@ -168,6 +168,7 @@ function compute_als(
         Ris = uniqueinds(target, i)
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
         _, _, p = qr(Tmat, ColumnNorm())
+        #_,_,p = lu(Tmat', RowMaximum(), allowsingular=true)
         push!(pivots, p)
 
         dRis = dim(Ris)
@@ -221,8 +222,8 @@ function compute_als(
         int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
         @assert int_start > 0 && int_start ≤ int_end
 
-        # TODO Use the randomized linear algebra to remove the need to form the matricized tensor.
         if n in lst
+            ## TODO there is still a bug in this line below
             k_sk = isnothing(rank_sk) ? int_end[n] : rank_sk[n]
             m = dim(i)
             l=Int(round(3 * m * log(m))) 
