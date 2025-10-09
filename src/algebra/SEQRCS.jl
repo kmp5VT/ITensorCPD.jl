@@ -67,14 +67,13 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t)
 
     # Sketch the matrix and applying QR 
     A_sk = sketched_matricization(A, mode , omega')
-    F = qr(A_sk, ColumnNorm())  
     _, _, p_sk = F.Q, F.R, F.p
     p_sk=p_sk[1:t]
     println("The size of A_sk is", size(A_sk))
 
     ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
     rows_sel = omega[p_sk,:]
-    indices = findall(col -> any(col .!= 0), eachcol(rows_sel))
+    indices = findall(col -> any(!=(0), col), eachcol(rows_sel))
     indices_ind = Index(length(indices),"ind")
     indices_tensor = itensor(indices, indices_ind)
     A_subset = fused_flatten_sample(A, mode, indices_tensor)
