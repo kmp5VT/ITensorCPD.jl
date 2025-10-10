@@ -1,5 +1,6 @@
 using ITensors: Index
 using ITensors.NDTensors: data
+println("algorithms.jl loaded")
 
 ## These are solvers which take advantage to the canonical CP-ALS normal equations
 abstract type MttkrpAlgorithm end
@@ -51,7 +52,7 @@ abstract type MttkrpAlgorithm end
 
         function matricize_tensor(::KRP, als, factors, cp, rank::Index, fact::Int)
 
-            factor_portion = factors[1:end .!= fact]
+            factor_portion = @view factors[1:end .!= fact]
             sequence = ITensors.default_sequence()
             krp = had_contract(dag.(factor_portion), rank; sequence)
 
@@ -70,7 +71,7 @@ abstract type MttkrpAlgorithm end
     struct direct <: MttkrpAlgorithm end
 
         function matricize_tensor(::direct, als, factors, cp, rank::Index, fact::Int)
-            factor_portion = factors[1:end .!= fact]
+            factor_portion = @view factors[1:end .!= fact]
             if isnothing(als.additional_items[:mttkrp_contract_sequences][fact])
                 als.additional_items[:mttkrp_contract_sequences][fact] =
                     optimal_had_contraction_sequence([als.target, dag.(factor_portion)...], rank)
@@ -84,7 +85,7 @@ abstract type MttkrpAlgorithm end
         end
 
         function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) 
-            als.additional_items[:part_grammian][fact] =
+            als.additional_items[:part_grammian][fact] .=
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
         end
 
@@ -96,7 +97,7 @@ abstract type MttkrpAlgorithm end
     struct TargetDecomp <: MttkrpAlgorithm end
 
         function matricize_tensor(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
-            factor_portion = factors[1:end .!= fact]
+            factor_portion = @view factors[1:end .!= fact]
             m = had_contract(
                 [
                     als.additional_items[:target_transform][fact],
@@ -113,7 +114,6 @@ abstract type MttkrpAlgorithm end
             als.additional_items[:part_grammian][fact] =
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
         end
-
 
 
     ################
@@ -328,30 +328,97 @@ abstract type ProjectionAlgorithm end
         QRPivProjected(n::Tuple) = QRPivProjected{Tuple(Int.(ones(length(n)))),n}()
         QRPivProjected(n::Tuple, m::Tuple) = QRPivProjected{n,m}()
 
-        start(::QRPivProjected{N}) where {N} = N
-        stop(::QRPivProjected{N,M}) where {N,M} = M
+    ### This solver is nearly identical to the one above. The major difference is that the 
+    ### QR method is replaced with a custom algorithm for randomized pivoted QR.
+    ### The SEQRCS was developed by Israa Fakih and Laura Grigori (DOI: )
+    ### The randomized method is only included for specified modes
+    
+struct SEQRCSPivProjected{Start,End} <: ProjectionAlgorithm
+    random_modes
+    rank_vect
+    
+    function SEQRCSPivProjected(n::Tuple, m::Tuple, rrmodes=nothing, rank_vect=nothing) 
+        rrmodes = isnothing(rrmodes) ? nothing : Tuple(rrmodes)
+        rank_vect = isnothing(rank_vect) ? nothing : Dict(rrmodes .=> Tuple(rank_vect))
+        new{n,m}(rrmodes, rank_vect)
+    end
+end
 
-        function project_krp(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
-            krp_piv = ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
-            return krp_piv
+    ## TODO modify to use ranges 
+    SEQRCSPivProjected() = SEQRCSPivProjected((1,), (0,), nothing, nothing)
+    SEQRCSPivProjected(n::Int) = SEQRCSPivProjected((1,), (n,), nothing, nothing)
+    SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
+    SEQRCSPivProjected(n::Int, m::Int, rrmodes=nothing, rank_vect=nothing) = SEQRCSPivProjected((n,),(m,), rrmodes, rank_vect)
+
+    random_modes(alg::SEQRCSPivProjected) = alg.random_modes
+    rank_vect(alg::SEQRCSPivProjected) = alg.rank_vect
+
+    ## This is a union class so that the operations work on both pivot based solver algorithms
+    const PivotBasedSolvers{N,M} = Union{QRPivProjected{N,M}, SEQRCSPivProjected{N,M}}
+
+        start(::PivotBasedSolvers{N}) where {N} = N
+        stop(::PivotBasedSolvers{N,M}) where {N,M} = M
+
+        function project_krp(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
+            ## This computes the exact grammian of the normal equations.
+            # part_grammian = factors .* dag.(prime.(factors; tags = tags(rank)))
+            # p = part_grammian[1]
+            # for g in part_grammian[2:end]
+            #     hadamard_product!(p,p,g)
+            # end
+            # return p
+            return ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
         end
 
-        function matricize_tensor(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
+        function matricize_tensor(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
+            ## This computes the projected MTTKRP
+            # return als.additional_items[:target_transform][fact] *  ITensorCPD.pivot_hadamard(dag.(factors[1:end .!= fact]), rank, als.additional_items[:projects_tensors][fact])
             return als.additional_items[:target_transform][fact]
         end
 
-        function solve_ls_problem(::QRPivProjected, projected_KRP, project_target, rank)
+        function solve_ls_problem(::PivotBasedSolvers, projected_KRP, project_target, rank)
+            # direction = qr(array(dag(projected_KRP)), ColumnNorm()) \ transpose(array(project_target))
             direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
             i = ind(project_target, 1)
             return itensor(copy(transpose(direction)), i,rank)
         end
 
-        function post_solve(::QRPivProjected, als, factors, λ, cp, rank::Index, fact::Integer) end
+        function post_solve(::PivotBasedSolvers, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+## This solver is for computing Tomega = A(B ododt C)omega 
+## The c1 and C2x vectors are constant vectors for determing the 
+## Sketching dimension and sparsity parameter.
+struct SketchProjected <: ProjectionAlgorithm
+    C1_vect
+    C2_vect
+end
+      SketchProjected()=SketchProjected(nothing,nothing)
+
+    C1_vect(alg::SketchProjected) = alg.C1_vect
+    C2_vect(alg::SketchProjected) = alg.C2_vect
 
 
-        ## This solver does not form the normal equations. 
-        ## We simply compute the khatri rao product and directly compute Ax=B for each least squres problem.
-        struct InvKRP <: ProjectionAlgorithm end
+    function project_krp(::SketchProjected, als, factors, cp, rank::Index, fact::Int)
+        return ITensorCPD.omega_hadamard(factors, rank, als.additional_items[:sketch_matrices][fact])
+    end
+
+    function matricize_tensor(:: SketchProjected, als, factors, cp, rank::Index, fact::Int)
+        return als.additional_items[:target_transform][fact]
+    end
+
+    function solve_ls_problem(::SketchProjected, projected_KRP, project_target, rank)
+        direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+        i = ind(project_target,1)
+        return itensor(copy(transpose(direction)), i ,rank)
+    end
+
+    function post_solve(::SketchProjected, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+
+
+    ## This solver does not form the normal equations. 
+    ## We simply compute the khatri rao product and directly compute Ax=B for each least squres problem.
+    struct InvKRP <: ProjectionAlgorithm end
 
         function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
             return had_contract(factors, rank)

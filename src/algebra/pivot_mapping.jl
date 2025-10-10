@@ -62,8 +62,29 @@ function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
   As = similar(T, (idx, inds(pivots)[end]))
   stride = strides(T.tensor)[k]
   pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), NDTensors.data(pivots))
-  for i in 1:dim(idx)
-    array(As)[i,:] .= @view v[pos .+ stride * (i - 1)]
+  ## Not sure which is faster
+  map!(i -> (@view v[pos .+ stride * (i - 1)]), eachrow(array(As)), 1:dim(idx))
+  # As_slice = eachrow(array(As))
+  # for i in 1:dim(idx)
+  #   As_slice[i] .= @view v[pos .+ stride * (i - 1)]
+  # end
+  return As
+end
+
+## This function takes a higher order tensor and a sparse matrix
+## and gives the sketched matricization of the tensor
+
+function  sketched_matricization(T::ITensor, k::Int, omega)
+  v = vec(NDTensors.data(T))
+  l = size(omega,2)
+  idx = ind(T, k)
+  As = similar(NDTensors.similartype(NDTensors.data(T), (1,2)), dim(idx), l)
+  As_slice = eachcol(As)
+  Om_slice = eachcol(omega)
+  stride = strides(T.tensor)[k]
+  for j in 1:l
+    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), findall(!iszero,@view Om_slice[j]))
+    As_slice[j] .= [sum(@view v[pos .+ stride* (i-1)]) for i in 1:dim(idx)]
   end
   return As
 end
