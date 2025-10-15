@@ -7,8 +7,8 @@ function optimize(cp::CPD, als::ALS; verbose = true)
     rank = cp_rank(cp)
     iter = 0
 
-    λ = copy(cp.λ)
-    factors = copy(cp.factors)
+    λ = deepcopy(cp.λ)
+    factors = deepcopy(cp.factors)
     num_factors = length(cp.factors)
     
     converge = als.check
