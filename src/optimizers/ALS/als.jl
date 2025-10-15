@@ -167,10 +167,15 @@ function compute_als(
     for (i, n) in zip(inds(target), 1:length(cp))
         
         Ris = uniqueinds(target, i)
-        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
+        m = dim(i)
+        Tmat = reshape(array(target, (i, Ris...)), (m, dim(Ris)))
         _, _, p = qr(Tmat, ColumnNorm())
         
         #_,_,p = lu(Tmat', RowMaximum(), allowsingular=true)
+        p1 = p[1:m]
+        p_rest = p[m+1:end]
+        p2 = p_rest[randperm(length(p_rest))]
+        p = vcat(p1, p2)
         push!(pivots, p)
 
         dRis = dim(Ris)
