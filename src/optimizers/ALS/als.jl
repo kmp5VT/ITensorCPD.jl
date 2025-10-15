@@ -1,6 +1,7 @@
 using LinearAlgebra: ColumnNorm, diagm
 using ITensors.NDTensors:Diag
 using ITensors: tags
+using TimerOutputs
 abstract type CPDOptimizer end
 
 struct ALS <: CPDOptimizer
@@ -165,10 +166,11 @@ function compute_als(
     targets = Vector{ITensor}()
     piv_id = nothing
     for (i, n) in zip(inds(target), 1:length(cp))
+        
         Ris = uniqueinds(target, i)
         Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
         _, _, p = qr(Tmat, ColumnNorm())
-    
+        
         #_,_,p = lu(Tmat', RowMaximum(), allowsingular=true)
         push!(pivots, p)
 
@@ -187,6 +189,7 @@ function compute_als(
 
         push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
         TP = fused_flatten_sample(target, n, projectors[n])
+        
     push!(targets, TP)
     end
     extra_args[:projects] = pivots
@@ -230,6 +233,7 @@ function compute_als(
             l=Int(round(3 * m * log(m))) 
             s=Int(round(log(m)))
             _,_,p = SEQRCS(target,n,i,l,s,k_sk)
+            p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
         else
             Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
             _, _, p = qr(Tmat, ColumnNorm())
@@ -241,6 +245,7 @@ function compute_als(
 
         push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
         TP = fused_flatten_sample(target, n, projectors[n])
+        
     push!(targets, TP)
     end
     extra_args[:projects] = pivots
