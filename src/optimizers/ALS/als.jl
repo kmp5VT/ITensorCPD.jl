@@ -1,7 +1,6 @@
 using LinearAlgebra: ColumnNorm, diagm
 using ITensors.NDTensors:Diag
 using ITensors: tags
-using TimerOutputs
 abstract type CPDOptimizer end
 
 struct ALS <: CPDOptimizer
@@ -233,7 +232,11 @@ function compute_als(
             l=Int(round(3 * m * log(m))) 
             s=Int(round(log(m)))
             _,_,p = SEQRCS(target,n,i,l,s,k_sk)
-            p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
+            # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
+            p1 = p[1:m]
+            p_rest = p[m+1:end]
+            p2 = p_rest[randperm(length(p_rest))]
+            p = vcat(p1, p2)
         else
             Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
             _, _, p = qr(Tmat, ColumnNorm())
