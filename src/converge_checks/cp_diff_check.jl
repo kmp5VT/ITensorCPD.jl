@@ -32,7 +32,7 @@ function check_converge(check::CPDiffCheck, factors, λ, partial_gram; verbose =
     fact_square = norm_factors([i * prime(i; tags=tags(rank)) for i in factors], λ)
     normResidual =
         sqrt(abs(check.norm_prev_iter + fact_square - 2 * abs(inner_prod)))
-    curr_fit = 1.0 - (normResidual / check.norm_prev_iter)
+    curr_fit = 1.0 - (normResidual / sqrt(check.norm_prev_iter))
     Δfit = abs(check.lastfit - curr_fit)
     check.lastfit = curr_fit
 
