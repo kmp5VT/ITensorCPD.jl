@@ -10,6 +10,8 @@ struct ALS <: CPDOptimizer
     check::ConvergeAlg
 end
 
+Base.copy(als::ALS) = ALS(als.target, als.mttkrp_alg, copy(als.additional_items), als.check)
+
 include("optimize.jl")
 
 function als_optimize(
