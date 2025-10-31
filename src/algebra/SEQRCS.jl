@@ -106,7 +106,7 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t)
     A_rem = matrix(A_rem)
     R = hcat(R,Q'*A_rem)
     end
-    @show timer
+    # @show timer
     return Q,R,p
 
 end
