@@ -180,7 +180,10 @@ abstract type MttkrpAlgorithm end
     ## of a network that has one CPD rank.
 
 
-## These are algorithms which do not use the normal equations and solve | PT - A (B ⊙ C) P |²
+
+    ## These are algorithms which do not use the normal equations and minimizes the loss function 
+    ## f(A,B,C) = | PT - [[A, B, C]] P |² using the least squares problems
+    ## PT = A* [(B ⊙ C) P]. 
 abstract type ProjectionAlgorithm end
 
     ## Default algorithm to compute the KRP: This computes a projected/sampled KRP
