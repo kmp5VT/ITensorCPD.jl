@@ -226,6 +226,14 @@ abstract type ProjectionAlgorithm end
         return check_converge(converge, factors, λ,  []; verbose)
     end
 
+    ## Default algorithm uses the pivoted QR to solve LS problem.
+    function solve_ls_problem(::ProjectionAlgorithm, projected_KRP, project_target, rank)
+        # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
+        direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+        i = ind(project_target, 1)
+        return itensor(copy(transpose(direction)), i,rank)
+    end
+
     ### With this solver we are going to compute sampling projectors for LS decomposition
     ### based on the leverage score of the factor matrices. Then we are going to solve a
     ### sampled least squares problem 
@@ -257,12 +265,6 @@ abstract type ProjectionAlgorithm end
             return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
         end
 
-        function solve_ls_problem(::LevScoreSampled, projected_KRP, project_target, rank)
-            # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
-            direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-            i = ind(project_target, 1)
-            return itensor(copy(transpose(direction)), i,rank)
-        end
 
         function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
             ## update the factor weights.
@@ -307,11 +309,6 @@ abstract type ProjectionAlgorithm end
             return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
         end
 
-        function solve_ls_problem(::BlockLevScoreSampled, projected_KRP, project_target, rank)
-            direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-            i = ind(project_target, 1)
-            return itensor(copy(transpose(direction)), i,rank)
-        end
 
         function post_solve(::BlockLevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
         ## update the factor weights.
@@ -384,12 +381,6 @@ abstract type ProjectionAlgorithm end
             return als.additional_items[:target_transform][fact]
         end
 
-        function solve_ls_problem(::PivotBasedSolvers, projected_KRP, project_target, rank)
-            # direction = qr(array(dag(projected_KRP)), ColumnNorm()) \ transpose(array(project_target))
-            direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-            i = ind(project_target, 1)
-            return itensor(copy(transpose(direction)), i,rank)
-        end
 
         function post_solve(::PivotBasedSolvers, als, factors, λ, cp, rank::Index, fact::Integer) end
 
@@ -414,11 +405,6 @@ abstract type ProjectionAlgorithm end
             return als.additional_items[:target_transform][fact]
         end
 
-        function solve_ls_problem(::SketchProjected, projected_KRP, project_target, rank)
-            direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-            i = ind(project_target,1)
-            return itensor(copy(transpose(direction)), i ,rank)
-        end
 
         function post_solve(::SketchProjected, als, factors, λ, cp, rank::Index, fact::Integer) end
 
