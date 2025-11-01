@@ -7,7 +7,7 @@ function norm_factors(partial_gram::Vector, λ::ITensor)
     for i = 2:length(partial_gram)
         hadamard_product!(had, had, partial_gram[i])
     end
-    return (had*(λ*dag(prime(λ))))[]
+    return real(had*(λ*dag(prime(λ))))[]
 end
 
 include("no_check.jl")

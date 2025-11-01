@@ -21,22 +21,21 @@ function check_converge(check::CPDiffCheck, factors, λ, partial_gram; verbose =
     rank = ind(λ, 1)
 
     if isnothing(check.PrevCP)
-        check.PrevCP = CPD{ITensor}(prime.(factors; tags=tags(rank)), prime(λ))
-        check.norm_prev_iter  = norm_factors([i * prime(i; tags=tags(rank)) for i in factors], λ)
+        check.PrevCP = dag(CPD{ITensor}(prime.(factors; tags=tags(rank)), prime(λ)))
+        check.norm_prev_iter  = norm_factors([i * prime(dag(i); tags=tags(rank)) for i in factors], λ)
         return false
     end
 
     currCP = CPD{ITensor}(factors, λ)
-    inner_prod = (check.PrevCP.λ * cp_cp_contract(check.PrevCP, currCP)[1] * λ)[]
-    #sum(hadamard_product(check.MttKRP, had_contract(dag(factors[end]), dag(λ), rank)))
-    fact_square = norm_factors([i * prime(i; tags=tags(rank)) for i in factors], λ)
+    inner_prod = real((check.PrevCP.λ * cp_cp_contract(check.PrevCP, currCP)[1] * λ)[])
+    fact_square = norm_factors([i * prime(dag(i); tags=tags(rank)) for i in factors], λ)
     normResidual =
         sqrt(abs(check.norm_prev_iter + fact_square - 2 * abs(inner_prod)))
-    curr_fit = 1.0 - (normResidual / sqrt(check.norm_prev_iter))
+    curr_fit = one(eltype(inner_prod)) - (normResidual / sqrt(check.norm_prev_iter))
     Δfit = abs(check.lastfit - curr_fit)
     check.lastfit = curr_fit
 
-    check.PrevCP = CPD{ITensor}(prime.(factors; tags=tags(rank)), prime(λ))
+    check.PrevCP = dag(CPD{ITensor}(prime.(factors; tags=tags(rank)), prime(λ)))
     check.norm_prev_iter  = fact_square
 
     if (verbose)
