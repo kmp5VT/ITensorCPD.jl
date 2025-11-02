@@ -182,6 +182,8 @@ function compute_als(
         q = array(qt)
         push!(qr_factors, q)
 
+        ## Potentially, we should look at r and start sampling when the 
+        ## value on the diagonal falls below some threshold (equivalent to running a truncated CP-QR)
         p1 = p[1:m]
         p_rest = p[m+1:end]
         p2 = p_rest[randperm(length(p_rest))]
@@ -204,7 +206,7 @@ function compute_als(
         push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
         TP = fused_flatten_sample(target, n, projectors[n])
         
-    push!(targets, TP)
+        push!(targets, TP)
     end
     extra_args[:projects] = pivots
     extra_args[:projects_tensors] = projectors
