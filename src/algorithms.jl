@@ -321,15 +321,17 @@ abstract type ProjectionAlgorithm end
     ### One easy way to do this is to make P a pivot matrix from a QR or LU. We will form P by taking the pivoted QR
     ### of T and choose a set certain number of pivots in each row.
     struct QRPivProjected <: ProjectionAlgorithm 
-        Start::Tuple
-        End::Tuple
+        Start::Union{<:Tuple, <:Int}
+        End::Union{<:Tuple, <:Int}
     end
 
         ## TODO modify to use ranges 
-        QRPivProjected() = QRPivProjected((1,),(0,))
-        QRPivProjected(n::Int) = QRPivProjected((1,),(n,))
-        QRPivProjected(n::Int, m::Int) = QRPivProjected((n,),(m,))
+        QRPivProjected() = QRPivProjected(1,0)
+        QRPivProjected(n::Int) = QRPivProjected(1,n)
         QRPivProjected(n::Tuple) = QRPivProjected(Tuple(Int.(ones(length(n)))),n)
+
+        copy_alg(alg::QRPivProjected, new_start = 0, new_end = 0) = 
+        SEQRCSPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end))
 
     ### This solver is nearly identical to the one above. The major difference is that the 
     ### QR method is replaced with a custom algorithm for randomized pivoted QR.
@@ -337,12 +339,12 @@ abstract type ProjectionAlgorithm end
     ### The randomized method is only included for specified modes
     
     struct SEQRCSPivProjected <: ProjectionAlgorithm
-        Start
-        End
+        Start::Union{<:Tuple, <:Int}
+        End::Union{<:Tuple, <:Int}
         random_modes
         rank_vect
         
-        function SEQRCSPivProjected(n::Tuple, m::Tuple, rrmodes=nothing, rank_vect=nothing) 
+        function SEQRCSPivProjected(n, m, rrmodes=nothing, rank_vect=nothing) 
             rrmodes = isnothing(rrmodes) ? nothing : Tuple(rrmodes)
             rank_vect = isnothing(rank_vect) ? nothing : Dict(rrmodes .=> Tuple(rank_vect))
             new(n, m, rrmodes, rank_vect)
@@ -350,13 +352,15 @@ abstract type ProjectionAlgorithm end
     end
 
         ## TODO modify to use ranges 
-        SEQRCSPivProjected() = SEQRCSPivProjected((1,), (0,), nothing, nothing)
-        SEQRCSPivProjected(n::Int) = SEQRCSPivProjected((1,), (n,), nothing, nothing)
+        SEQRCSPivProjected() = SEQRCSPivProjected(1, 0, nothing, nothing)
+        SEQRCSPivProjected(n::Int) = SEQRCSPivProjected(1, n, nothing, nothing)
         SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
-        SEQRCSPivProjected(n::Int, m::Int, rrmodes=nothing, rank_vect=nothing) = SEQRCSPivProjected((n,),(m,), rrmodes, rank_vect)
 
         random_modes(alg::SEQRCSPivProjected) = alg.random_modes
         rank_vect(alg::SEQRCSPivProjected) = alg.rank_vect
+
+        copy_alg(alg::SEQRCSPivProjected, new_start = 0, new_end = 0) = 
+        SEQRCSPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
 
     ## This is a union class so that the operations work on both pivot based solver algorithms
     const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected}
