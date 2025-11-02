@@ -368,6 +368,61 @@ abstract type ProjectionAlgorithm end
         start(alg::PivotBasedSolvers) = alg.Start
         stop(alg::PivotBasedSolvers) = alg.End
 
+        ## This does an out of place copy of the als with a change in the samples. This way you don't
+        ## need to recompute the QR. This is a "dumb" algorithm because it resamples the full
+        ## target tensor so a future algorithm should just modify the target to reduce the amount of work.
+        ## reshuffle redoes the sampling of the pivots beyond the rank of the matrix.
+        function update_samples(cpd_inds, als, new_num_end; reshuffle = false, new_num_start = 0)
+            @assert(als.mttkrp_alg isa PivotBasedSolvers)
+            
+            ## Make an updated alg with correct new range
+            updated_alg = copy_alg(als.mttkrp_alg, new_num_start, new_num_end)
+            
+            pivots = deepcopy(als.additional_items[:projects])
+            projectors = deepcopy(als.additional_items[:projects_tensors])
+            targets = deepcopy(als.additional_items[:target_transform])
+            for (is,p,pos, projector_tensor) in zip(cpd_inds, pivots,1:length(cpd_inds), projectors)
+                ## This is reshuffling the indices
+                if reshuffle
+                    m = dim(is)
+                    p1 = p[1:m]
+                    p_rest = p[m+1:end]
+                    p2 = p_rest[randperm(length(p_rest))]
+                    p = vcat(p1, p2)
+                    
+                    pivots[pos] = p
+                end
+
+                Ris = inds(projector_tensor)[1:end-1]
+
+                dRis = dim(Ris)
+                int_end = stop(updated_alg)
+                int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
+                int_end = iszero(int_end) ? dRis : int_end
+                int_end = dRis < int_end ? dRis : int_end
+
+                @show start(updated_alg)
+                int_start = start(updated_alg)
+                int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
+                @assert int_start > 0 && int_start ≤ int_end
+
+                ndim = int_end - int_start + 1
+                piv_id = Index(ndim, "pivot")
+
+                projectors[pos] =  itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id)))
+
+                targets[pos] = fused_flatten_sample(als.target, pos, projectors[pos])
+            end
+
+            extra_args = Dict(
+            :projects => pivots,
+            :projects_tensors => projectors,
+            :target_transform => targets,
+            :qr_factors => als.additional_items[:qr_factors]
+            )
+            return ALS(als.target, updated_alg, extra_args, als.check)
+        end
+
         function project_krp(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
             ## This computes the exact grammian of the normal equations.
             # part_grammian = factors .* dag.(prime.(factors; tags = tags(rank)))
