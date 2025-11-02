@@ -13,20 +13,20 @@ include("./util.jl")
                                                  (Float32, Float64, ComplexF32, ComplexF64)
     nx = 3
     grid = named_grid((nx, 3))
-    tn1 = random_tensornetwork(grid; link_space = 1)
-    tn2 = random_tensornetwork(grid; link_space = 1)
+    tn1 = random_tensornetwork(elt, grid; link_space = 1)
+    tn2 = random_tensornetwork(elt, grid; link_space = 1)
     tn = tn1 + tn2
 
     subtn = subgraph(tn, ((2, 1), (2, 2), (2, 3)))
     s = subtn.data_graph.vertex_data.values
     sp = replace_inner_w_prime_loop(s)
 
-    sqrs = s[1] * sp[1]
+    sqrs = s[1] * dag(sp[1])
     for i = 2:length(sp)
-        sqrs = sqrs * s[i] * sp[i]
+        sqrs = sqrs * s[i] * dag(sp[i])
     end
 
-    check = ITensorCPD.FitCheck(1e-10, 100, sqrt(sqrs[]))
+    check = ITensorCPD.FitCheck(1e-10, 100, real(sqrt(sqrs[])))
 
     while check.final_fit < 0.9
         rng = Random.seed!(Random.RandomDevice())
@@ -48,8 +48,8 @@ include("./util.jl")
 
     nx = ny = 5
     grid = named_grid((nx, ny))
-    tn1 = random_tensornetwork(grid; link_space = 1)
-    tn2 = random_tensornetwork(grid; link_space = 1)
+    tn1 = random_tensornetwork(elt, grid; link_space = 1)
+    tn2 = random_tensornetwork(elt, grid; link_space = 1)
 
     tn = tn1 + tn2
 
@@ -58,11 +58,11 @@ include("./util.jl")
     s = subtn.data_graph.vertex_data.values
     sp = replace_inner_w_prime_loop(s)
 
-    sqrs = s[1] * sp[1]
+    sqrs = s[1] * dag(sp[1])
     for i = 2:length(sp)
-        sqrs = sqrs * s[i] * sp[i]
+        sqrs = sqrs * s[i] * dag(sp[i])
     end
-    check = ITensorCPD.FitCheck(1e-20, 1000, sqrt(sqrs[]))
+    check = ITensorCPD.FitCheck(1e-20, 1000, real(sqrt(sqrs[])))
 
     using Random
     rng = MersenneTwister(3)
@@ -91,13 +91,13 @@ end
     ## TODO make this with ITensorNetworks
     sisingp = replace_inner_w_prime_loop(sising)
 
-    sqrs = sising[1] * sisingp[1]
+    sqrs = sising[1] * dag(sisingp[1])
     for i = 2:length(sising)
-        sqrs = sqrs * sising[i] * sisingp[i]
+        sqrs = sqrs * sising[i] * dag(sisingp[i])
     end
 
 
-    check = ITensorCPD.FitCheck(1e-3, 6, sqrt(sqrs[]))
+    check = ITensorCPD.FitCheck(1e-3, 6, real(sqrt(sqrs[])))
     cpopt = ITensorCPD.als_optimize(s1, ITensorCPD.random_CPD(s1, r); check, verbose = false);
     #1.0 - norm(ITensorCPD.reconstruct(cpopt) - contract([s1...])) / sqrs[]
     @test isapprox(
