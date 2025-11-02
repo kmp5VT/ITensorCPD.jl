@@ -244,10 +244,10 @@ function compute_als(
 
         q = nothing
         r = nothing
+        m = dim(i)
         if n in lst
             ## TODO there is still a bug in this line below
             k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
-            m = dim(i)
             l=Int(round(3 * m * log(m))) 
             s=Int(round(log(m)))
             q,r,p = SEQRCS(target,n,i,l,s,k_sk)
