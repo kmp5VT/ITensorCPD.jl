@@ -401,7 +401,6 @@ abstract type ProjectionAlgorithm end
                 int_end = iszero(int_end) ? dRis : int_end
                 int_end = dRis < int_end ? dRis : int_end
 
-                @show start(updated_alg)
                 int_start = start(updated_alg)
                 int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
                 @assert int_start > 0 && int_start ≤ int_end
