@@ -174,7 +174,7 @@ end
     opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose=true);
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose=true);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check=ITensorCPD.CPDiffCheck(1e-2, 20), verbose=true);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     ### Test for Leverage score sampling CPD 
