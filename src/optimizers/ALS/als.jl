@@ -165,15 +165,23 @@ function compute_als(
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
+    qr_factors = Vector{AbstractArray}()
     piv_id = nothing
     for (i, n) in zip(inds(target), 1:length(cp))
         
         Ris = uniqueinds(target, i)
         m = dim(i)
         Tmat = reshape(array(target, (i, Ris...)), (m, dim(Ris)))
-        _, _, p = qr(Tmat, ColumnNorm())
+        q, r, p = qr(Tmat, ColumnNorm())
         
-        #_,_,p = lu(Tmat', RowMaximum(), allowsingular=true)
+        #q,r,p = lu(Tmat', RowMaximum(), allowsingular=true)
+        
+        ### QR based inital guess strategy.
+        idx = Index(m, "rank")
+        qt = had_contract(itensor(copy(q), Index(m),idx), itensor(diag(r), idx), idx)
+        q = array(qt)
+        push!(qr_factors, q)
+
         p1 = p[1:m]
         p_rest = p[m+1:end]
         p2 = p_rest[randperm(length(p_rest))]
@@ -201,6 +209,7 @@ function compute_als(
     extra_args[:projects] = pivots
     extra_args[:projects_tensors] = projectors
     extra_args[:target_transform] = targets
+    extra_args[:qr_factors] = qr_factors
     
     return ALS(target, alg, extra_args, check)
 end
@@ -218,6 +227,7 @@ function compute_als(
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
+    qr_factors = Vector{AbstractArray}()
     piv_id = nothing
     for (i, n) in zip(inds(target), 1:length(cp))
         Ris = uniqueinds(target, i)
@@ -232,13 +242,15 @@ function compute_als(
         int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
         @assert int_start > 0 && int_start ≤ int_end
 
+        q = nothing
+        r = nothing
         if n in lst
             ## TODO there is still a bug in this line below
             k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
             m = dim(i)
             l=Int(round(3 * m * log(m))) 
             s=Int(round(log(m)))
-            _,_,p = SEQRCS(target,n,i,l,s,k_sk)
+            q,r,p = SEQRCS(target,n,i,l,s,k_sk)
             # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
             p1 = p[1:m]
             p_rest = p[m+1:end]
@@ -246,9 +258,15 @@ function compute_als(
             p = vcat(p1, p2)
         else
             Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
-            _, _, p = qr(Tmat, ColumnNorm())
+            q, r, p = qr(Tmat, ColumnNorm())
         end
         push!(pivots, p)
+
+        ### QR based inital guess strategy.
+        idx = Index(m, "rank")
+        qt = had_contract(itensor(copy(q), Index(m),idx), itensor(diag(r), idx), idx)
+        q = array(qt)
+        push!(qr_factors, q)
 
         ndim = int_end - int_start + 1
         piv_id = Index(ndim, "pivot")
@@ -261,6 +279,7 @@ function compute_als(
     extra_args[:projects] = pivots
     extra_args[:projects_tensors] = projectors
     extra_args[:target_transform] = targets
+    extra_args[:qr_factors] = qr_factors
     
     return ALS(target, alg, extra_args, check)
 end
