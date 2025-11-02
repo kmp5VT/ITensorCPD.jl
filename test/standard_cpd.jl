@@ -170,11 +170,11 @@ end
     A = ITensorCPD.reconstruct(random_CPD(A, 20))
 
     cp_A = random_CPD(A, 10)
-    check=ITensorCPD.FitCheck(1e-3, 100, norm(A))
+    check=ITensorCPD.FitCheck(1e-3, 5, norm(A))
     opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose=true);
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check=ITensorCPD.CPDiffCheck(1e-2, 20), verbose=true);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(1200), check, verbose=true);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     ### Test for Leverage score sampling CPD 
