@@ -54,7 +54,7 @@
     ITensorCPD.optimize(cp_A, als; verbose = true);
     
     int_opt_A =
-       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(500), check, verbose=true, shuffle_pivots=true, trunc_tol=0.001);
+       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose=true, shuffle_pivots=true, trunc_tol=0.001);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
