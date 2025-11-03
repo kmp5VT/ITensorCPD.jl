@@ -20,8 +20,9 @@ function als_optimize(
     alg = nothing,
     check = nothing,
     maxiter = nothing,
-    verbose = false,)
-    als = compute_als(target, cp; alg, check, maxiter)
+    verbose = false,
+    kwargs...)
+    als = compute_als(target, cp; alg, check, maxiter, kwargs...)
     optimize(cp, als; verbose)
 end
 
@@ -33,7 +34,8 @@ function compute_als(
     cp::CPD{<:ITensor};
     alg = nothing,
     check = nothing,
-    maxiter = nothing
+    maxiter = nothing,
+    kwargs...
 )
     alg = isnothing(alg) ? direct() : alg
     extra_args = Dict();
@@ -44,7 +46,7 @@ function compute_als(
     end
     extra_args[:mttkrp_contract_sequences] = mttkrp_contract_sequences
     cprank = cp_rank(cp)
-    return compute_als(alg, target, cp; extra_args, check)
+    return compute_als(alg, target, cp; extra_args, check, kwargs...)
 end
 
 ## Default constructor algorithms for normal equation based solvers (MttkrpAlgorithm).
@@ -161,6 +163,8 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    shuffle_pivots = true,
+    trunc_tol = 1e-10
 )
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
@@ -173,6 +177,7 @@ function compute_als(
         m = dim(i)
         Tmat = reshape(array(target, (i, Ris...)), (m, dim(Ris)))
         q, r, p = qr(Tmat, ColumnNorm())
+        meff = sum(abs.(diag(r)) .> trunc_tol)
         
         #q,r,p = lu(Tmat', RowMaximum(), allowsingular=true)
         
@@ -184,10 +189,12 @@ function compute_als(
 
         ## Potentially, we should look at r and start sampling when the 
         ## value on the diagonal falls below some threshold (equivalent to running a truncated CP-QR)
-        p1 = p[1:m]
-        p_rest = p[m+1:end]
-        p2 = p_rest[randperm(length(p_rest))]
+        p1 = p[1:meff]
+        p_rest = p[meff+1:end]
+        p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
         p = vcat(p1, p2)
+
+        # p = randperm(dim(Ris))
         push!(pivots, p)
 
         dRis = dim(Ris)
@@ -222,7 +229,10 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    shuffle_pivots = true,
+    trunc_tol = 1e-10,
 )
+    @show shuffle_pivots
     lst = random_modes(alg)
     lst = isnothing(lst) ? [] : lst
     rank_sk = rank_vect(alg)
@@ -254,14 +264,16 @@ function compute_als(
             s=Int(round(log(m)))
             q,r,p = SEQRCS(target,n,i,l,s,k_sk)
             # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
-            p1 = p[1:m]
-            p_rest = p[m+1:end]
-            p2 = p_rest[randperm(length(p_rest))]
-            p = vcat(p1, p2)
         else
             Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
             q, r, p = qr(Tmat, ColumnNorm())
         end
+
+        meff = sum(abs.(diag(r)) .> trunc_tol)
+        p1 = p[1:meff]
+        p_rest = p[meff+1:end]
+        p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
+        p = vcat(p1, p2)
         push!(pivots, p)
 
         ### QR based inital guess strategy.
