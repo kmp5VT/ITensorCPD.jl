@@ -12,7 +12,10 @@ mutable struct FitCheck <: ConvergeAlg
     lastfit::Number
     final_fit::Number
 
-    FitCheck(tol, max, norm) = new(0, 0, tol, max, norm, ITensor(), 1, 0)
+    function FitCheck(tol, max, norm)
+        elt = real(typeof(norm))
+         new(zero(elt), zero(elt), tol, max, norm, ITensor(), one(elt), zero(elt))
+    end
 end
 
 save_mttkrp(check::FitCheck, mttkrp::ITensor) = check.MttKRP = mttkrp
@@ -25,7 +28,7 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     fact_square = norm_factors(partial_gram, λ)
     normResidual =
         sqrt(abs(check.ref_norm * check.ref_norm + fact_square - 2 * abs(inner_prod)))
-    curr_fit = 1.0 - (normResidual / check.ref_norm)
+    curr_fit = one(eltype(normResidual)) - (normResidual / check.ref_norm)
     Δfit = abs(check.lastfit - curr_fit)
     check.lastfit = curr_fit
 
@@ -33,6 +36,9 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
         println("$(dim(rank))\t $(check.iter) \t $(curr_fit) \t $(Δfit)")
     end
 
+    if isnan(curr_fit)
+        throw("Error NAN")
+    end
     if Δfit < check.tolerance
         check.counter += 1
         if check.counter >= 2

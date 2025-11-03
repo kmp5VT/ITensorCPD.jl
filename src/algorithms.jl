@@ -1,5 +1,6 @@
 using ITensors: Index
 using ITensors.NDTensors: data
+println("algorithms.jl loaded")
 
 ## These are solvers which take advantage to the canonical CP-ALS normal equations
 abstract type MttkrpAlgorithm end
@@ -51,7 +52,7 @@ abstract type MttkrpAlgorithm end
 
         function matricize_tensor(::KRP, als, factors, cp, rank::Index, fact::Int)
 
-            factor_portion = factors[1:end .!= fact]
+            factor_portion = @view factors[1:end .!= fact]
             sequence = ITensors.default_sequence()
             krp = had_contract(dag.(factor_portion), rank; sequence)
 
@@ -70,7 +71,7 @@ abstract type MttkrpAlgorithm end
     struct direct <: MttkrpAlgorithm end
 
         function matricize_tensor(::direct, als, factors, cp, rank::Index, fact::Int)
-            factor_portion = factors[1:end .!= fact]
+            factor_portion = @view factors[1:end .!= fact]
             if isnothing(als.additional_items[:mttkrp_contract_sequences][fact])
                 als.additional_items[:mttkrp_contract_sequences][fact] =
                     optimal_had_contraction_sequence([als.target, dag.(factor_portion)...], rank)
@@ -84,7 +85,7 @@ abstract type MttkrpAlgorithm end
         end
 
         function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) 
-            als.additional_items[:part_grammian][fact] =
+            als.additional_items[:part_grammian][fact] .=
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
         end
 
@@ -96,7 +97,7 @@ abstract type MttkrpAlgorithm end
     struct TargetDecomp <: MttkrpAlgorithm end
 
         function matricize_tensor(::TargetDecomp, als, factors, cp, rank::Index, fact::Int)
-            factor_portion = factors[1:end .!= fact]
+            factor_portion = @view factors[1:end .!= fact]
             m = had_contract(
                 [
                     als.additional_items[:target_transform][fact],
@@ -113,7 +114,6 @@ abstract type MttkrpAlgorithm end
             als.additional_items[:part_grammian][fact] =
                 factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
         end
-
 
 
     ################
@@ -180,7 +180,10 @@ abstract type MttkrpAlgorithm end
     ## of a network that has one CPD rank.
 
 
-## These are algorithms which do not use the normal equations and solve | PT - A (B ⊙ C) P |²
+
+    ## These are algorithms which do not use the normal equations and minimizes the loss function 
+    ## f(A,B,C) = | PT - [[A, B, C]] P |² using the least squares problems
+    ## PT = A* [(B ⊙ C) P]. 
 abstract type ProjectionAlgorithm end
 
     ## Default algorithm to compute the KRP: This computes a projected/sampled KRP
@@ -206,12 +209,13 @@ abstract type ProjectionAlgorithm end
             end
             als.check.iter += 1
             if verbose
-                inner_prod = (had_contract([als.target, dag.(factors)...], cprank) * dag(λ))[]
+                inner_prod = real((had_contract([als.target, dag.(factors)...], cprank) * dag(λ))[])
                 partial_gram = [fact * dag(prime(fact; tags=tags(cprank))) for fact in factors];
                 fact_square = ITensorCPD.norm_factors(partial_gram, λ)
                 normResidual =
                     sqrt(abs(als.check.ref_norm * als.check.ref_norm + fact_square - 2 * abs(inner_prod)))
-                println("$(dim(cprank))\t$(als.check.iter)\t$(1.0 - normResidual / norm(als.check.ref_norm))")
+                elt = typeof(inner_prod)
+                println("$(dim(cprank))\t$(als.check.iter)\t$(one(elt) - normResidual / norm(als.check.ref_norm))")
             end
             if als.check.iter == als.check.max_counter
                 als.check.iter = 0
@@ -220,6 +224,14 @@ abstract type ProjectionAlgorithm end
         end
 
         return check_converge(converge, factors, λ,  []; verbose)
+    end
+
+    ## Default algorithm uses the pivoted QR to solve LS problem.
+    function solve_ls_problem(::ProjectionAlgorithm, projected_KRP, project_target, rank)
+        # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
+        direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+        i = ind(project_target, 1)
+        return itensor(copy(transpose(direction)), i,rank)
     end
 
     ### With this solver we are going to compute sampling projectors for LS decomposition
@@ -253,12 +265,6 @@ abstract type ProjectionAlgorithm end
             return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
         end
 
-        function solve_ls_problem(::LevScoreSampled, projected_KRP, project_target, rank)
-            # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
-            direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-            i = ind(project_target, 1)
-            return itensor(copy(transpose(direction)), i,rank)
-        end
 
         function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
             ## update the factor weights.
@@ -303,11 +309,6 @@ abstract type ProjectionAlgorithm end
             return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
         end
 
-        function solve_ls_problem(::BlockLevScoreSampled, projected_KRP, project_target, rank)
-            direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-            i = ind(project_target, 1)
-            return itensor(copy(transpose(direction)), i,rank)
-        end
 
         function post_solve(::BlockLevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
         ## update the factor weights.
@@ -319,39 +320,158 @@ abstract type ProjectionAlgorithm end
     ### In order to solve this equation we need the following to be true P(b,c l) P(b',c', l) ≈ I(b,c,b',c')
     ### One easy way to do this is to make P a pivot matrix from a QR or LU. We will form P by taking the pivoted QR
     ### of T and choose a set certain number of pivots in each row.
-    struct QRPivProjected{Start,End} <: ProjectionAlgorithm end
+    struct QRPivProjected <: ProjectionAlgorithm 
+        Start::Union{<:Tuple, <:Int}
+        End::Union{<:Tuple, <:Int}
+    end
 
         ## TODO modify to use ranges 
-        QRPivProjected() = QRPivProjected{(1,),(0,)}()
-        QRPivProjected(n::Int) = QRPivProjected{(1,),(n,)}()
-        QRPivProjected(n::Int, m::Int) = QRPivProjected{(n,),(m,)}()
-        QRPivProjected(n::Tuple) = QRPivProjected{Tuple(Int.(ones(length(n)))),n}()
-        QRPivProjected(n::Tuple, m::Tuple) = QRPivProjected{n,m}()
+        QRPivProjected() = QRPivProjected(1,0)
+        QRPivProjected(n::Int) = QRPivProjected(1,n)
+        QRPivProjected(n::Tuple) = QRPivProjected(Tuple(Int.(ones(length(n)))),n)
 
-        start(::QRPivProjected{N}) where {N} = N
-        stop(::QRPivProjected{N,M}) where {N,M} = M
+        copy_alg(alg::QRPivProjected, new_start = 0, new_end = 0) = 
+        SEQRCSPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end))
 
-        function project_krp(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
-            krp_piv = ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
-            return krp_piv
+    ### This solver is nearly identical to the one above. The major difference is that the 
+    ### QR method is replaced with a custom algorithm for randomized pivoted QR.
+    ### The SEQRCS was developed by Israa Fakih and Laura Grigori (DOI: )
+    ### The randomized method is only included for specified modes
+    
+    struct SEQRCSPivProjected <: ProjectionAlgorithm
+        Start::Union{<:Tuple, <:Int}
+        End::Union{<:Tuple, <:Int}
+        random_modes
+        rank_vect
+        
+        function SEQRCSPivProjected(n, m, rrmodes=nothing, rank_vect=nothing) 
+            rrmodes = isnothing(rrmodes) ? nothing : Tuple(rrmodes)
+            rank_vect = isnothing(rank_vect) ? nothing : Dict(rrmodes .=> Tuple(rank_vect))
+            new(n, m, rrmodes, rank_vect)
+        end
+    end
+
+        ## TODO modify to use ranges 
+        SEQRCSPivProjected() = SEQRCSPivProjected(1, 0, nothing, nothing)
+        SEQRCSPivProjected(n::Int) = SEQRCSPivProjected(1, n, nothing, nothing)
+        SEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
+
+        random_modes(alg::SEQRCSPivProjected) = alg.random_modes
+        rank_vect(alg::SEQRCSPivProjected) = alg.rank_vect
+
+        copy_alg(alg::SEQRCSPivProjected, new_start = 0, new_end = 0) = 
+        SEQRCSPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
+
+    ## This is a union class so that the operations work on both pivot based solver algorithms
+    const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected}
+
+        start(alg::PivotBasedSolvers) = alg.Start
+        stop(alg::PivotBasedSolvers) = alg.End
+
+        ## This does an out of place copy of the als with a change in the samples. This way you don't
+        ## need to recompute the QR. This is a "dumb" algorithm because it resamples the full
+        ## target tensor so a future algorithm should just modify the target to reduce the amount of work.
+        ## reshuffle redoes the sampling of the pivots beyond the rank of the matrix.
+        function update_samples(als, new_num_end; reshuffle = false, new_num_start = 0)
+            @assert(als.mttkrp_alg isa PivotBasedSolvers)
+            
+            ## Make an updated alg with correct new range
+            updated_alg = copy_alg(als.mttkrp_alg, new_num_start, new_num_end)
+            
+            pivots = deepcopy(als.additional_items[:projects])
+            projectors = deepcopy(als.additional_items[:projects_tensors])
+            targets = deepcopy(als.additional_items[:target_transform])
+            effective_ranks = als.additional_items[:effective_ranks]
+            for (p,pos, projector_tensor, meff) in zip(pivots,1:length(pivots), projectors, effective_ranks)
+                ## This is reshuffling the indices
+                if reshuffle
+                    p1 = p[1:meff]
+                    p_rest = p[meff+1:end]
+                    p2 = p_rest[randperm(length(p_rest))]
+                    p = vcat(p1, p2)
+                    
+                    pivots[pos] = p
+                end
+
+                Ris = inds(projector_tensor)[1:end-1]
+
+                dRis = dim(Ris)
+                int_end = stop(updated_alg)
+                int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
+                int_end = iszero(int_end) ? dRis : int_end
+                int_end = dRis < int_end ? dRis : int_end
+
+                int_start = start(updated_alg)
+                int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
+                @assert int_start > 0 && int_start ≤ int_end
+
+                ndim = int_end - int_start + 1
+                piv_id = Index(ndim, "pivot")
+
+                projectors[pos] =  itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id)))
+
+                targets[pos] = fused_flatten_sample(als.target, pos, projectors[pos])
+            end
+
+            extra_args = Dict(
+            :projects => pivots,
+            :projects_tensors => projectors,
+            :target_transform => targets,
+            :qr_factors => als.additional_items[:qr_factors],
+            :effective_ranks => als.additional_items[:effective_ranks]
+            )
+            return ALS(als.target, updated_alg, extra_args, als.check)
         end
 
-        function matricize_tensor(::QRPivProjected, als, factors, cp, rank::Index, fact::Int)
+        function project_krp(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
+            ## This computes the exact grammian of the normal equations.
+            # part_grammian = factors .* dag.(prime.(factors; tags = tags(rank)))
+            # p = part_grammian[1]
+            # for g in part_grammian[2:end]
+            #     hadamard_product!(p,p,g)
+            # end
+            # return p
+            return ITensorCPD.pivot_hadamard(factors, rank, als.additional_items[:projects_tensors][fact])
+        end
+
+        function matricize_tensor(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
+            ## This computes the projected MTTKRP
+            # return als.additional_items[:target_transform][fact] *  ITensorCPD.pivot_hadamard(dag.(factors[1:end .!= fact]), rank, als.additional_items[:projects_tensors][fact])
             return als.additional_items[:target_transform][fact]
         end
 
-        function solve_ls_problem(::QRPivProjected, projected_KRP, project_target, rank)
-            direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-            i = ind(project_target, 1)
-            return itensor(copy(transpose(direction)), i,rank)
+
+        function post_solve(::PivotBasedSolvers, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+    ## This solver is for computing Tomega = A(B ododt C)omega 
+    ## The c1 and C2x vectors are constant vectors for determing the 
+    ## Sketching dimension and sparsity parameter.
+    struct SketchProjected <: ProjectionAlgorithm
+        C1_vect
+        C2_vect
+    end
+        SketchProjected()=SketchProjected(nothing,nothing)
+
+        C1_vect(alg::SketchProjected) = alg.C1_vect
+        C2_vect(alg::SketchProjected) = alg.C2_vect
+
+
+        function project_krp(::SketchProjected, als, factors, cp, rank::Index, fact::Int)
+            return ITensorCPD.omega_hadamard(factors, rank, als.additional_items[:sketch_matrices][fact])
         end
 
-        function post_solve(::QRPivProjected, als, factors, λ, cp, rank::Index, fact::Integer) end
+        function matricize_tensor(:: SketchProjected, als, factors, cp, rank::Index, fact::Int)
+            return als.additional_items[:target_transform][fact]
+        end
 
 
-        ## This solver does not form the normal equations. 
-        ## We simply compute the khatri rao product and directly compute Ax=B for each least squres problem.
-        struct InvKRP <: ProjectionAlgorithm end
+        function post_solve(::SketchProjected, als, factors, λ, cp, rank::Index, fact::Integer) end
+
+
+
+    ## This solver does not form the normal equations. 
+    ## We simply compute the khatri rao product and directly compute Ax=B for each least squres problem.
+    struct InvKRP <: ProjectionAlgorithm end
 
         function project_krp(::InvKRP, als, factors, cp, rank::Index, fact::Int)
             return had_contract(factors, rank)
@@ -362,7 +482,7 @@ abstract type ProjectionAlgorithm end
 
         function solve_ls_problem(::InvKRP, projected_KRP, projected_target, rank)
             U, S, V = svd(dag(projected_KRP), rank; use_absolute_cutoff = true, cutoff = 0)
-            return (U * (prime(projected_target; tags = tags(rank)) * V * (1 ./ S)))
+            return prime(projected_target; tags = tags(rank)) * V * (1 ./ S) * U
         end
 
         function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end

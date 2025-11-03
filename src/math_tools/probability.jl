@@ -1,5 +1,5 @@
 using LinearAlgebra, StatsBase
-
+using ITensors: Index
 function compute_leverage_score_probabilitiy(A, row::Index)
   ## This only works on matrices for now.
   @assert ndims(A) == 2

@@ -7,8 +7,8 @@ function optimize(cp::CPD, als::ALS; verbose = true)
     rank = cp_rank(cp)
     iter = 0
 
-    λ = copy(cp.λ)
-    factors = copy(cp.factors)
+    λ = deepcopy(cp.λ)
+    factors = deepcopy(cp.factors)
     num_factors = length(cp.factors)
     
     converge = als.check
@@ -22,10 +22,6 @@ function optimize(cp::CPD, als::ALS; verbose = true)
 
             solution = solve_ls_problem(als.mttkrp_alg, krp, mtkrp, rank)
             
-            # factors[fact], λ = row_norm(
-            #     itensor(copy(transpose(solution)), inds(mtkrp)),
-            #     ind(cp, fact),
-            # )
             factors[fact], λ = row_norm(solution, target_ind)
 
             post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)

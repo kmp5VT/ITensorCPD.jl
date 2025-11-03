@@ -42,6 +42,8 @@ Base.eltype(cp::CPD) = return eltype(cp.λ)
 Base.iterate(cp::CPD) = return Base.iterate(cp.factors)
 Base.iterate(cp::CPD, i::Int) = return Base.iterate(cp.factors, i)
 
+ITensors.dag(cpd::CPD) = return CPD{paramT(cpd)}(dag.(cpd.factors), dag.(cpd.λ), inds(cpd))
+
 function random_factors(elt::Union{<:Type, Nothing}, is::Indices, rank::Index; rng=nothing)
     @assert !isnothing(elt)
     rng = isnothing(rng) ? MersenneTwister(3) : rng

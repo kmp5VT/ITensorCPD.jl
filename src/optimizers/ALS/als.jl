@@ -20,8 +20,9 @@ function als_optimize(
     alg = nothing,
     check = nothing,
     maxiter = nothing,
-    verbose = false,)
-    als = compute_als(target, cp; alg, check, maxiter)
+    verbose = false,
+    kwargs...)
+    als = compute_als(target, cp; alg, check, maxiter, kwargs...)
     optimize(cp, als; verbose)
 end
 
@@ -33,7 +34,8 @@ function compute_als(
     cp::CPD{<:ITensor};
     alg = nothing,
     check = nothing,
-    maxiter = nothing
+    maxiter = nothing,
+    kwargs...
 )
     alg = isnothing(alg) ? direct() : alg
     extra_args = Dict();
@@ -44,7 +46,7 @@ function compute_als(
     end
     extra_args[:mttkrp_contract_sequences] = mttkrp_contract_sequences
     cprank = cp_rank(cp)
-    return compute_als(alg, target, cp; extra_args, check)
+    return compute_als(alg, target, cp; extra_args, check, kwargs...)
 end
 
 ## Default constructor algorithms for normal equation based solvers (MttkrpAlgorithm).
@@ -161,15 +163,40 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    shuffle_pivots = true,
+    trunc_tol = 1e-10
 )
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
+    qr_factors = Vector{AbstractArray}()
+    effective_ranks = Vector{Int}()
     piv_id = nothing
     for (i, n) in zip(inds(target), 1:length(cp))
+        
         Ris = uniqueinds(target, i)
-        Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
-        _, _, p = qr(Tmat, ColumnNorm())
+        m = dim(i)
+        Tmat = reshape(array(target, (i, Ris...)), (m, dim(Ris)))
+        q, r, p = qr(Tmat, ColumnNorm())
+        meff = sum(abs.(diag(r)) .> trunc_tol)
+        push!(effective_ranks, meff)
+        
+        #q,r,p = lu(Tmat', RowMaximum(), allowsingular=true)
+        
+        ### QR based inital guess strategy.
+        idx = Index(m, "rank")
+        qt = had_contract(itensor(copy(q), Index(m),idx), itensor(diag(r), idx), idx)
+        q = array(qt)
+        push!(qr_factors, q)
+
+        ## Potentially, we should look at r and start sampling when the 
+        ## value on the diagonal falls below some threshold (equivalent to running a truncated CP-QR)
+        p1 = p[1:meff]
+        p_rest = p[meff+1:end]
+        p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
+        p = vcat(p1, p2)
+
+        # p = randperm(dim(Ris))
         push!(pivots, p)
 
         dRis = dim(Ris)
@@ -187,11 +214,123 @@ function compute_als(
 
         push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
         TP = fused_flatten_sample(target, n, projectors[n])
+        
+        push!(targets, TP)
+    end
+    extra_args[:projects] = pivots
+    extra_args[:projects_tensors] = projectors
+    extra_args[:target_transform] = targets
+    extra_args[:qr_factors] = qr_factors
+    extra_args[:effective_ranks] = effective_ranks
+    
+    return ALS(target, alg, extra_args, check)
+end
+
+function compute_als(
+    alg::SEQRCSPivProjected,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    shuffle_pivots = true,
+    trunc_tol = 1e-10,
+)
+    @show shuffle_pivots
+    lst = random_modes(alg)
+    lst = isnothing(lst) ? [] : lst
+    rank_sk = rank_vect(alg)
+    pivots = Vector{Vector{Int}}()
+    projectors = Vector{ITensor}()
+    targets = Vector{ITensor}()
+    qr_factors = Vector{AbstractArray}()
+    effective_ranks = Vector{Int}()
+    piv_id = nothing
+    for (i, n) in zip(inds(target), 1:length(cp))
+        Ris = uniqueinds(target, i)
+
+        dRis = dim(Ris)
+        int_end = stop(alg)
+        int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
+        int_end = iszero(int_end) ? dRis : int_end
+        int_end = dRis < int_end ? dRis : int_end
+
+        int_start = start(alg)
+        int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
+        @assert int_start > 0 && int_start ≤ int_end
+
+        q = nothing
+        r = nothing
+        m = dim(i)
+        if n in lst
+            ## TODO there is still a bug in this line below
+            k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
+            l=Int(round(3 * m * log(m))) 
+            s=Int(round(log(m)))
+            q,r,p = SEQRCS(target,n,i,l,s,k_sk)
+            # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
+        else
+            Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
+            q, r, p = qr(Tmat, ColumnNorm())
+        end
+
+        meff = sum(abs.(diag(r)) .> trunc_tol)
+        push!(effective_ranks, meff)
+        p1 = p[1:meff]
+        p_rest = p[meff+1:end]
+        p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
+        p = vcat(p1, p2)
+        push!(pivots, p)
+
+        ### QR based inital guess strategy.
+        idx = Index(m, "rank")
+        qt = had_contract(itensor(copy(q), Index(m),idx), itensor(diag(r), idx), idx)
+        q = array(qt)
+        push!(qr_factors, q)
+
+        ndim = int_end - int_start + 1
+        piv_id = Index(ndim, "pivot")
+
+        push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
+        TP = fused_flatten_sample(target, n, projectors[n])
+        
     push!(targets, TP)
     end
     extra_args[:projects] = pivots
     extra_args[:projects_tensors] = projectors
     extra_args[:target_transform] = targets
+    extra_args[:qr_factors] = qr_factors
+    extra_args[:effective_ranks] = effective_ranks
+    
+    return ALS(target, alg, extra_args, check)
+end
+
+function compute_als(
+    alg::SketchProjected,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+)
+    C1_v = C1_vect(alg)
+    C2_v = C2_vect(alg)
+    targets = Vector{ITensor}()
+    sketch = Vector{Matrix{Float64}}()
+    for (i, n) in zip(inds(target), 1:length(cp))
+        C1 = isnothing(C1_v) ? 3 : C1_v[n]
+        C2 = isnothing(C2_v) ? 1 : C2_v[n]
+        Ris = uniqueinds(target, i)         
+        p = dim(Ris)
+        m = dim(i)
+        l=Int(round(C1 * m * log(m))) 
+        s=Int(round(C2*log(m)))
+        omega = sparse_sign_matrix(l,p,s)
+        TP = sketched_matricization(target, n, omega')
+        TP = itensor(TP,i,Index(l,"l"))
+    push!(targets, TP)
+    push!(sketch,omega)
+    end
+    extra_args[:target_transform] = targets
+    extra_args[:sketch_matrices] = sketch
     
     return ALS(target, alg, extra_args, check)
 end
