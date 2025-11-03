@@ -46,11 +46,12 @@
 
     ## This method uses the interpolative squared to precondition the problem.
     alg = ITensorCPD.QRPivProjected(800)
-    als = ITensorCPD.compute_als(A, cp_A; alg, check);
+    als = ITensorCPD.compute_als(A, cp_A; alg, check, trunc_tol=4);
     
-    als = ITensorCPD.update_samples(inds(cp_A), als, 900; reshuffle = true);
+    als = ITensorCPD.update_samples(als, 900; reshuffle = false);
     @test ITensorCPD.stop(als.mttkrp_alg) == 900
     @test ITensorCPD.start(als.mttkrp_alg) == 1
+    @test als.additional_items[:effective_ranks][1] < 20
     ITensorCPD.optimize(cp_A, als; verbose = true);
     
     int_opt_A =
@@ -61,7 +62,7 @@
     alg = ITensorCPD.SEQRCSPivProjected(1, 800, (1,2,3),(100,100,100))
     als = ITensorCPD.compute_als(A, cp_A; alg, check);
     
-    als = ITensorCPD.update_samples(inds(cp_A), als, 600; reshuffle = true);
+    als = ITensorCPD.update_samples(als, 600; reshuffle = true);
     @test ITensorCPD.stop(als.mttkrp_alg) == 600
     @test ITensorCPD.start(als.mttkrp_alg) == 1
     ITensorCPD.optimize(cp_A, als; verbose = true);

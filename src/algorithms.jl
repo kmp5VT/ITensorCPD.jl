@@ -372,7 +372,7 @@ abstract type ProjectionAlgorithm end
         ## need to recompute the QR. This is a "dumb" algorithm because it resamples the full
         ## target tensor so a future algorithm should just modify the target to reduce the amount of work.
         ## reshuffle redoes the sampling of the pivots beyond the rank of the matrix.
-        function update_samples(cpd_inds, als, new_num_end; reshuffle = false, new_num_start = 0)
+        function update_samples(als, new_num_end; reshuffle = false, new_num_start = 0)
             @assert(als.mttkrp_alg isa PivotBasedSolvers)
             
             ## Make an updated alg with correct new range
@@ -381,12 +381,12 @@ abstract type ProjectionAlgorithm end
             pivots = deepcopy(als.additional_items[:projects])
             projectors = deepcopy(als.additional_items[:projects_tensors])
             targets = deepcopy(als.additional_items[:target_transform])
-            for (is,p,pos, projector_tensor) in zip(cpd_inds, pivots,1:length(cpd_inds), projectors)
+            effective_ranks = als.additional_items[:effective_ranks]
+            for (p,pos, projector_tensor, meff) in zip(pivots,1:length(pivots), projectors, effective_ranks)
                 ## This is reshuffling the indices
                 if reshuffle
-                    m = dim(is)
-                    p1 = p[1:m]
-                    p_rest = p[m+1:end]
+                    p1 = p[1:meff]
+                    p_rest = p[meff+1:end]
                     p2 = p_rest[randperm(length(p_rest))]
                     p = vcat(p1, p2)
                     
@@ -417,7 +417,8 @@ abstract type ProjectionAlgorithm end
             :projects => pivots,
             :projects_tensors => projectors,
             :target_transform => targets,
-            :qr_factors => als.additional_items[:qr_factors]
+            :qr_factors => als.additional_items[:qr_factors],
+            :effective_ranks => als.additional_items[:effective_ranks]
             )
             return ALS(als.target, updated_alg, extra_args, als.check)
         end

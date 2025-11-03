@@ -170,6 +170,7 @@ function compute_als(
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
     qr_factors = Vector{AbstractArray}()
+    effective_ranks = Vector{Int}()
     piv_id = nothing
     for (i, n) in zip(inds(target), 1:length(cp))
         
@@ -178,6 +179,7 @@ function compute_als(
         Tmat = reshape(array(target, (i, Ris...)), (m, dim(Ris)))
         q, r, p = qr(Tmat, ColumnNorm())
         meff = sum(abs.(diag(r)) .> trunc_tol)
+        push!(effective_ranks, meff)
         
         #q,r,p = lu(Tmat', RowMaximum(), allowsingular=true)
         
@@ -219,6 +221,7 @@ function compute_als(
     extra_args[:projects_tensors] = projectors
     extra_args[:target_transform] = targets
     extra_args[:qr_factors] = qr_factors
+    extra_args[:effective_ranks] = effective_ranks
     
     return ALS(target, alg, extra_args, check)
 end
@@ -240,6 +243,7 @@ function compute_als(
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
     qr_factors = Vector{AbstractArray}()
+    effective_ranks = Vector{Int}()
     piv_id = nothing
     for (i, n) in zip(inds(target), 1:length(cp))
         Ris = uniqueinds(target, i)
@@ -270,6 +274,7 @@ function compute_als(
         end
 
         meff = sum(abs.(diag(r)) .> trunc_tol)
+        push!(effective_ranks, meff)
         p1 = p[1:meff]
         p_rest = p[meff+1:end]
         p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
@@ -294,6 +299,7 @@ function compute_als(
     extra_args[:projects_tensors] = projectors
     extra_args[:target_transform] = targets
     extra_args[:qr_factors] = qr_factors
+    extra_args[:effective_ranks] = effective_ranks
     
     return ALS(target, alg, extra_args, check)
 end
