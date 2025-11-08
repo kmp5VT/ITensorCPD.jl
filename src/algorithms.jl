@@ -330,6 +330,7 @@ abstract type ProjectionAlgorithm end
         QRPivProjected(n::Int) = QRPivProjected(1,n)
         QRPivProjected(n::Tuple) = QRPivProjected(Tuple(Int.(ones(length(n)))),n)
 
+        ## TODO this fails for new_start as a tuple 
         copy_alg(alg::QRPivProjected, new_start = 0, new_end = 0) = 
         SEQRCSPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end))
 
@@ -360,7 +361,7 @@ abstract type ProjectionAlgorithm end
         rank_vect(alg::SEQRCSPivProjected) = alg.rank_vect
 
         copy_alg(alg::SEQRCSPivProjected, new_start = 0, new_end = 0) = 
-        SEQRCSPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
+        SEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
 
     ## This is a union class so that the operations work on both pivot based solver algorithms
     const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected}
