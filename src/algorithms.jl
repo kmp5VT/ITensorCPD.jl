@@ -397,12 +397,12 @@ abstract type ProjectionAlgorithm end
 
                 dRis = dim(Ris)
                 int_end = stop(updated_alg)
-                int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
+                int_end = length(int_end) == 1 ? int_end[1] : int_end[pos]
                 int_end = iszero(int_end) ? dRis : int_end
                 int_end = dRis < int_end ? dRis : int_end
 
                 int_start = start(updated_alg)
-                int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
+                int_start = length(int_start) == 1 ? int_start[1] : int_start[pos]
                 @assert int_start > 0 && int_start ≤ int_end
 
                 ndim = int_end - int_start + 1
