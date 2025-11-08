@@ -332,7 +332,7 @@ abstract type ProjectionAlgorithm end
 
         ## TODO this fails for new_start as a tuple 
         copy_alg(alg::QRPivProjected, new_start = 0, new_end = 0) = 
-        SEQRCSPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end))
+        QRPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end))
 
     ### This solver is nearly identical to the one above. The major difference is that the 
     ### QR method is replaced with a custom algorithm for randomized pivoted QR.
