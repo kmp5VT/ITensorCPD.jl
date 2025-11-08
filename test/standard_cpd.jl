@@ -51,6 +51,7 @@
     als = ITensorCPD.update_samples(als, 900; reshuffle = false);
     @test ITensorCPD.stop(als.mttkrp_alg) == 900
     @test ITensorCPD.start(als.mttkrp_alg) == 1
+    @test typeof(als.mttkrp_alg) == ITensorCPD.QRPivProjected
     @test als.additional_items[:effective_ranks][1] < 20
     ITensorCPD.optimize(cp_A, als; verbose = true);
     
@@ -65,6 +66,7 @@
     als = ITensorCPD.update_samples(als, 600; reshuffle = true);
     @test ITensorCPD.stop(als.mttkrp_alg) == 600
     @test ITensorCPD.start(als.mttkrp_alg) == 1
+    @test typeof(als.mttkrp_alg) == ITensorCPD.SEQRCSPivProjected
     ITensorCPD.optimize(cp_A, als; verbose = true);
 
     int_opt_A =

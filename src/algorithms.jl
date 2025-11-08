@@ -330,8 +330,9 @@ abstract type ProjectionAlgorithm end
         QRPivProjected(n::Int) = QRPivProjected(1,n)
         QRPivProjected(n::Tuple) = QRPivProjected(Tuple(Int.(ones(length(n)))),n)
 
+        ## TODO this fails for new_start as a tuple 
         copy_alg(alg::QRPivProjected, new_start = 0, new_end = 0) = 
-        SEQRCSPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end))
+        QRPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end))
 
     ### This solver is nearly identical to the one above. The major difference is that the 
     ### QR method is replaced with a custom algorithm for randomized pivoted QR.
@@ -360,7 +361,7 @@ abstract type ProjectionAlgorithm end
         rank_vect(alg::SEQRCSPivProjected) = alg.rank_vect
 
         copy_alg(alg::SEQRCSPivProjected, new_start = 0, new_end = 0) = 
-        SEQRCSPivProjected((iszero(new_start) ? alg.Start : new_start), (iszero(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
+        SEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
 
     ## This is a union class so that the operations work on both pivot based solver algorithms
     const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected}
@@ -397,12 +398,12 @@ abstract type ProjectionAlgorithm end
 
                 dRis = dim(Ris)
                 int_end = stop(updated_alg)
-                int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
+                int_end = length(int_end) == 1 ? int_end[1] : int_end[pos]
                 int_end = iszero(int_end) ? dRis : int_end
                 int_end = dRis < int_end ? dRis : int_end
 
                 int_start = start(updated_alg)
-                int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
+                int_start = length(int_start) == 1 ? int_start[1] : int_start[pos]
                 @assert int_start > 0 && int_start ≤ int_end
 
                 ndim = int_end - int_start + 1
