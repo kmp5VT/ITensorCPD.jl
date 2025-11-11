@@ -15,12 +15,12 @@
     @test real(one(elt)) ≈ sum(array(Aijnorm .^ 2))
 end
 
-@testset "Hadamard contract algorithm, elt=$elt" for elt in [
+@testset "Hadamard contract algorithm, elt=$elt" for elt in (
     Float32,
     Float64,
     ComplexF32,
     ComplexF64,
-]
+)
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
     A = random_itensor(elt, i, j, k)
