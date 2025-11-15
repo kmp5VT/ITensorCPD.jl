@@ -1,6 +1,5 @@
 using ITensors: Index
 using ITensors.NDTensors: data
-println("algorithms.jl loaded")
 
 ## These are solvers which take advantage to the canonical CP-ALS normal equations
 abstract type MttkrpAlgorithm end
