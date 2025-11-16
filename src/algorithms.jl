@@ -231,7 +231,7 @@ abstract type ProjectionAlgorithm end
     function solve_ls_problem(::ProjectionAlgorithm, projected_KRP, project_target, rank)
         # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
         #direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-        direction = ldiv_solve!!(expose(array(dag(projected_KRP))), expose(transpose(array(project_target))); factorizeA = true)
+        direction = ldiv_solve!!(expose(array(projected_KRP)), expose(transpose(array(project_target))))
         i = ind(project_target, 1)
         return itensor(copy(transpose(direction)), i,rank)
     end
