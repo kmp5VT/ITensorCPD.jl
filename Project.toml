@@ -15,7 +15,19 @@ StridedViews = "4db3bf67-4bd7-4b4e-b153-31dc3fb37143"
 TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
+[weakdeps]
+GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+
+[extensions]
+ITCPDGPUArraysCoreExt = "GPUArraysCore"
+ITCPDMetalExt = ["GPUArraysCore", "Metal"]
+
 [compat]
 LinearAlgebra = "1.10.0"
 StatsBase = "0.34.6"
 julia = "1.10"
+
+[extras]
+GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"

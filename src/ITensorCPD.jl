@@ -5,6 +5,7 @@ module ITensorCPD
   include("algebra/pivot_mapping.jl")
   include("math_tools/probability.jl")
   include("algebra/SEQRCS.jl")
+  include("algebra/ldiv_solve.jl")
 
   include("cpd.jl")
   include("algorithms.jl")

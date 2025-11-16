@@ -15,6 +15,7 @@ function row_norm(t::ITensor, i...)
         d = itensor(NDTensors.Diag(dataT(ones(elt, dim(is)))), is)
         l_array = l_array * d
     end
+    
     return itensor(
         array(t) ./ array(permute(l_array, inds(t); allow_alias = true)),
         inds(t),

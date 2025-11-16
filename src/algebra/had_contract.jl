@@ -83,7 +83,7 @@ function had_contract(tensors, had::Index; α = true, sequence = nothing)
     C = similar(cslice, (inds(cslice)..., had))
     #ITensor(zeros(eltype(cslice), dim(had) * dim(cslice)), (had, inds(cslice)...))
     slices_c = eachslice(array(C); dims = ndims(C))
-    slices_c[1] .= cslice
+    slices_c[1] .= array(cslice)
 
     ## TODO concat lists in a memory free way? all things are already stored in memory so if I could 
     ## make a list of pointers to the start of all these lists that would be cheap.
@@ -175,7 +175,7 @@ function had_contract(
     C = similar(cslice, (inds(cslice)..., had))
 
     slices_c = eachslice(array(C); dims = ndims(C))
-    slices_c[1] .= cslice
+    slices_c[1] .= array(cslice)
 
     for i = 2:dim(had)
         slice = ITensorNetwork(
@@ -256,9 +256,10 @@ function pivot_hadamard(tensors, had::Index, pivots::ITensor)
     is = [commonind(pivots,x) for x in tensors]
 
     npivs = column_to_multi_coords(data(pivots), dim.(is))
-    prod = ones(eltype(tensors[1]), size(npivs)[1], dim(had))
+    #prod = ones(eltype(tensors[1]), size(npivs)[1], dim(had))
+    prod = typeof(array(tensors[1]))(ones(eltype(tensors[1]), size(npivs)[1], dim(had)))
     for (tensor, i) in zip(tensors, 1:length(tensors))
-        prod .*= array(tensor)[npivs[:,i], :]
+        prod .*= (@view array(tensor)[npivs[:,i], :])
     end
     
     return itensor(prod, inds(pivots)[end], had)
@@ -273,9 +274,11 @@ function pivot_hadamard(tensors, had::Index, pivots::Matrix, piv_ind::Union{<:No
     end
 
     npivs = size(pivots)[1]
-    prod = ones(eltype(tensors[1]), npivs, dim(had))
+    arrayT =typeof(array(tensors[1]))
+    prod = arrayT(ones(eltype(tensors[1]), npivs, dim(had)))
     for (tensor, i) in zip(tensors, 1:length(tensors))
-        prod .*= array(tensor)[pivots[:,i], :]
+        m = @view array(tensor)[pivots[:,i], :]
+        prod .*= m
     end
     
     piv_ind = isnothing(piv_ind) ? Index(npivs, "PivIdx") : piv_ind
