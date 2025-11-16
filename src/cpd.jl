@@ -84,6 +84,9 @@ function random_CPD(target::ITensorNetwork, rank::Index; rng = nothing)
     ## for every noncommonind push
     is = vcat([uniqueinds(target, v) for v in verts]...)
     factors, lambda = random_factors(elt, is, rank; rng);
+    dataT = NDTensors.datatype(target)
+    factors = adapt.(dataT, factors)
+    lambda = adapt(dataT, lambda)
 
     return CPD{ITensorNetwork}(factors, lambda)
 end
