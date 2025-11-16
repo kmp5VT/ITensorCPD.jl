@@ -1,5 +1,6 @@
 using ITensors: Index
 using ITensors.NDTensors: data
+using ITensors.NDTensors.Expose: expose
 
 ## These are solvers which take advantage to the canonical CP-ALS normal equations
 abstract type MttkrpAlgorithm end
@@ -37,7 +38,8 @@ abstract type MttkrpAlgorithm end
     function solve_ls_problem(::MttkrpAlgorithm,krp, mtkrp, rank)
         ## potentially better to first inverse the grammian then contract
         ## qr(A, Val(true))
-        solution = qr(array(dag(krp)), ColumnNorm()) \ transpose(array(mtkrp))
+        #solution = array(dag(krp)) \ transpose(array(mtkrp))
+        solution = ldiv_solve!!(expose(array(dag(krp))), expose(transpose(array(mtkrp))); factorizeA = true)
         i = ind(mtkrp, 1)
         return itensor(copy(transpose(solution)), i,rank)
     end
@@ -228,7 +230,8 @@ abstract type ProjectionAlgorithm end
     ## Default algorithm uses the pivoted QR to solve LS problem.
     function solve_ls_problem(::ProjectionAlgorithm, projected_KRP, project_target, rank)
         # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
-        direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+        #direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+        direction = ldiv_solve!!(expose(array(dag(projected_KRP))), expose(transpose(array(project_target))); factorizeA = true)
         i = ind(project_target, 1)
         return itensor(copy(transpose(direction)), i,rank)
     end
