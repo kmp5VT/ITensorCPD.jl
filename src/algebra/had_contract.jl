@@ -274,9 +274,11 @@ function pivot_hadamard(tensors, had::Index, pivots::Matrix, piv_ind::Union{<:No
     end
 
     npivs = size(pivots)[1]
-    prod = ones(eltype(tensors[1]), npivs, dim(had))
+    arrayT =typeof(array(tensors[1]))
+    prod = arrayT(ones(eltype(tensors[1]), npivs, dim(had)))
     for (tensor, i) in zip(tensors, 1:length(tensors))
-        prod .*= array(tensor)[pivots[:,i], :]
+        m = @view array(tensor)[pivots[:,i], :]
+        prod .*= m
     end
     
     piv_ind = isnothing(piv_ind) ? Index(npivs, "PivIdx") : piv_ind
