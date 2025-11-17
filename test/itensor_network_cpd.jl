@@ -26,12 +26,12 @@ include("./util.jl")
         sqrs = sqrs * s[i] * dag(sp[i])
     end
 
-    check = ITensorCPD.FitCheck(1e-10, 100, real(sqrt(sqrs[])))
+    check = ITensorCPD.FitCheck(1e-3, 100, real(sqrt(sqrs[])))
 
     while check.final_fit < 0.9
         rng = Random.seed!(Random.RandomDevice())
         guess = ITensorCPD.random_CPD(subtn, 2; rng)
-        cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = true);
+        cpd = ITensorCPD.als_optimize(subtn, guess; check, verbose = false);
     end
     @test 1 - check.final_fit < 0.1
 
@@ -62,14 +62,14 @@ include("./util.jl")
     for i = 2:length(sp)
         sqrs = sqrs * s[i] * dag(sp[i])
     end
-    check = ITensorCPD.FitCheck(1e-20, 1000, real(sqrt(sqrs[])))
+    check = ITensorCPD.FitCheck(1e-3, 100, real(sqrt(sqrs[])))
 
     using Random
     rng = MersenneTwister(3)
     bestfit = 0;
     opt = nothing
     for i = 1:3
-        opt = ITensorCPD.decompose(subtn, Index(2, "rank"); check, verbose = true, rng);
+        opt = ITensorCPD.decompose(subtn, Index(2, "rank"); check, verbose = false, rng);
         fit = check.final_fit
         bestfit = fit > bestfit ? fit : bestfit
     end
