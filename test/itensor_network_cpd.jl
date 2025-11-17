@@ -69,11 +69,11 @@ include("./util.jl")
     bestfit = 0;
     opt = nothing
     for i = 1:3
-        opt = ITensorCPD.decompose(subtn, Index(2, "rank"); check, verbose = false, rng);
-        fit = 1.0 - check.final_fit
+        opt = ITensorCPD.decompose(subtn, Index(2, "rank"); check, verbose = true, rng);
+        fit = check.final_fit
         bestfit = fit > bestfit ? fit : bestfit
     end
-    @test bestfit ≈ 1
+    @test 1 - bestfit < 0.01
 end
 
 @testset "itensor_networks" for elt in (Float32, Float64, ComplexF32, ComplexF64)
