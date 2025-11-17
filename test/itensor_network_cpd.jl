@@ -69,7 +69,7 @@ include("./util.jl")
     bestfit = 0;
     opt = nothing
     for i = 1:3
-        opt = ITensorCPD.decompose(subtn, Index(2, "rank"); verbose = false, rng);
+        opt = ITensorCPD.decompose(subtn, Index(2, "rank"); check, verbose = false, rng);
         fit = 1.0 - check.final_fit
         bestfit = fit > bestfit ? fit : bestfit
     end
