@@ -57,6 +57,7 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    kwargs...
 )
     cprank = cp_rank(cp)
     extra_args[:part_grammian] = cp.factors .* dag.(prime.(cp.factors; tags = tags(cprank)))
@@ -69,6 +70,7 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    kwargs...
 )
     cprank = cp_rank(cp)
     extra_args[:part_grammian] = cp.factors .* dag.(prime.(cp.factors; tags = tags(cprank)))
@@ -92,6 +94,7 @@ function compute_als(
     alg = nothing,
     check = nothing,
     maxiter = nothing,
+    kwargs...
 )
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
     alg = isnothing(alg) ? network_solver() : alg
@@ -153,6 +156,7 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    kwargs...
 )
     return ALS(target, alg, extra_args, check)
 end
@@ -164,7 +168,8 @@ function compute_als(
     extra_args = Dict(),
     check = nothing,
     shuffle_pivots = true,
-    trunc_tol = 1e-10
+    trunc_tol = 1e-10,
+    kwargs...
 )
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
@@ -234,8 +239,8 @@ function compute_als(
     check = nothing,
     shuffle_pivots = true,
     trunc_tol = 1e-10,
+    kwargs...
 )
-    @show shuffle_pivots
     lst = random_modes(alg)
     lst = isnothing(lst) ? [] : lst
     rank_sk = rank_vect(alg)
@@ -310,6 +315,7 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    kwargs...
 )
     C1_v = C1_vect(alg)
     C2_v = C2_vect(alg)
@@ -341,6 +347,7 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    kwargs...
 )
     ## For each factor matrix compute its weights
     extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
@@ -374,6 +381,7 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    kwargs...
 )
     ## For each factor matrix compute its weights
     extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
