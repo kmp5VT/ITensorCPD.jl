@@ -201,7 +201,7 @@ function compute_als(
         ## value on the diagonal falls below some threshold (equivalent to running a truncated CP-QR)
         p1 = p[1:meff]
         ## We skip the rest of the pivots in p because we assume we took all the important directions already
-        p_rest = p[m+1:end]
+        p_rest = p[meff+1:end]
         p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
         p = vcat(p1, p2)
 
@@ -291,7 +291,7 @@ function compute_als(
         push!(effective_ranks, meff)
         p1 = p[1:meff]
         ## We skip the rest of the pivots in p because we assume we took all the important directions already
-        p_rest = p[m+1:end]
+        p_rest = p[meff+1:end]
         p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
         p = vcat(p1, p2)
         push!(pivots, p)
