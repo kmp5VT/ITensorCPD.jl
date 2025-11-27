@@ -172,6 +172,7 @@ function compute_als(
     kwargs...
 )
     pivots = Vector{Vector{Int}}()
+    ref_pivs = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
     qr_factors = Vector{AbstractArray}()
@@ -194,10 +195,12 @@ function compute_als(
         q = array(qt)
         push!(qr_factors, q)
 
+        push!(ref_pivs, deepcopy(p))
         ## Potentially, we should look at r and start sampling when the 
         ## value on the diagonal falls below some threshold (equivalent to running a truncated CP-QR)
         p1 = p[1:meff]
-        p_rest = p[meff+1:end]
+        ## We skip the rest of the pivots in p because we assume we took all the important directions already
+        p_rest = p[m+1:end]
         p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
         p = vcat(p1, p2)
 
@@ -222,6 +225,7 @@ function compute_als(
         
         push!(targets, TP)
     end
+    extra_args[:ref_projectors] = ref_pivs
     extra_args[:projects] = pivots
     extra_args[:projects_tensors] = projectors
     extra_args[:target_transform] = targets
@@ -244,6 +248,7 @@ function compute_als(
     lst = random_modes(alg)
     lst = isnothing(lst) ? [] : lst
     rank_sk = rank_vect(alg)
+    ref_pivs = Vector{Vector{Int}}()
     pivots = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
@@ -278,10 +283,13 @@ function compute_als(
             q, r, p = qr(Tmat, ColumnNorm())
         end
 
+        push!(ref_pivs, deepcopy(p))
+
         meff = sum(abs.(diag(r)) .> trunc_tol)
         push!(effective_ranks, meff)
         p1 = p[1:meff]
-        p_rest = p[meff+1:end]
+        ## We skip the rest of the pivots in p because we assume we took all the important directions already
+        p_rest = p[m+1:end]
         p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
         p = vcat(p1, p2)
         push!(pivots, p)
@@ -300,6 +308,7 @@ function compute_als(
         
     push!(targets, TP)
     end
+    extra_args[:ref_projectors] = ref_pivs
     extra_args[:projects] = pivots
     extra_args[:projects_tensors] = projectors
     extra_args[:target_transform] = targets

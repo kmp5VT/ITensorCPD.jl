@@ -232,7 +232,7 @@ abstract type ProjectionAlgorithm end
     function solve_ls_problem(::ProjectionAlgorithm, projected_KRP, project_target, rank)
         # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
         #direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-        direction = ldiv_solve!!(expose(array(projected_KRP)), expose(transpose(array(project_target))))
+        direction = ldiv_solve!!(expose(array(projected_KRP)), expose(transpose(array(project_target)));factorizeA=true)
         i = ind(project_target, 1)
         return itensor(copy(transpose(direction)), i,rank)
     end
@@ -382,19 +382,20 @@ abstract type ProjectionAlgorithm end
             ## Make an updated alg with correct new range
             updated_alg = copy_alg(als.mttkrp_alg, new_num_start, new_num_end)
             
-            pivots = deepcopy(als.additional_items[:projects])
+            pivots = similar(als.additional_items[:projects])
+            ref_pivs = deepcopy(als.additional_items[:ref_projectors])
             projectors = deepcopy(als.additional_items[:projects_tensors])
-            targets = deepcopy(als.additional_items[:target_transform])
+            targets = similar(als.additional_items[:target_transform])
             effective_ranks = als.additional_items[:effective_ranks]
-            for (p,pos, projector_tensor, meff) in zip(pivots,1:length(pivots), projectors, effective_ranks)
+            for (p,pos, projector_tensor, meff, m) in zip(ref_pivs,1:length(pivots), projectors, effective_ranks, dims(als.target))
                 ## This is reshuffling the indices
                 if reshuffle
                     p1 = p[1:meff]
-                    p_rest = p[meff+1:end]
+                    p_rest = p[m+1:end]
                     p2 = p_rest[randperm(length(p_rest))]
-                    p = vcat(p1, p2)
+                    pshuff = vcat(p1, p2)
                     
-                    pivots[pos] = p
+                    pivots[pos] = pshuff
                 end
 
                 Ris = inds(projector_tensor)[1:end-1]
@@ -412,12 +413,14 @@ abstract type ProjectionAlgorithm end
                 ndim = int_end - int_start + 1
                 piv_id = Index(ndim, "pivot")
 
-                projectors[pos] =  itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id)))
+                projectors[pos] =  itensor(tensor(Diag(pivots[pos][int_start:int_end]), (Ris..., piv_id)))
 
                 targets[pos] = fused_flatten_sample(als.target, pos, projectors[pos])
             end
 
             extra_args = Dict(
+            :mttkrp_contract_sequences => als.additional_items[:mttkrp_contract_sequences],
+            :ref_projectors => ref_pivs,
             :projects => pivots,
             :projects_tensors => projectors,
             :target_transform => targets,
