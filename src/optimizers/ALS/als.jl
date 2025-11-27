@@ -168,7 +168,7 @@ function compute_als(
     extra_args = Dict(),
     check = nothing,
     shuffle_pivots = true,
-    trunc_tol = 1e-10,
+    trunc_tol = 0.01,
     kwargs...
 )
     pivots = Vector{Vector{Int}}()
@@ -184,7 +184,8 @@ function compute_als(
         m = dim(i)
         Tmat = reshape(array(target, (i, Ris...)), (m, dim(Ris)))
         q, r, p = qr(Tmat, ColumnNorm())
-        meff = sum(abs.(diag(r)) .> trunc_tol)
+        #meff = sum(abs.(diag(r)) .> trunc_tol)
+        meff = sum(abs.(diag(r)) ./ maximum(abs.(diag(r))) .> trunc_tol)
         push!(effective_ranks, meff)
         
         #q,r,p = lu(Tmat', RowMaximum(), allowsingular=true)
@@ -242,7 +243,7 @@ function compute_als(
     extra_args = Dict(),
     check = nothing,
     shuffle_pivots = true,
-    trunc_tol = 1e-10,
+    trunc_tol = 0.01,
     kwargs...
 )
     lst = random_modes(alg)
@@ -285,7 +286,8 @@ function compute_als(
 
         push!(ref_pivs, deepcopy(p))
 
-        meff = sum(abs.(diag(r)) .> trunc_tol)
+        # meff = sum(abs.(diag(r)) .> trunc_tol)
+        meff = sum(abs.(diag(r)) ./ maximum(abs.(diag(r))) .> trunc_tol)
         push!(effective_ranks, meff)
         p1 = p[1:meff]
         ## We skip the rest of the pivots in p because we assume we took all the important directions already
