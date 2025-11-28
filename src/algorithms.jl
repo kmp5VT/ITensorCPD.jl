@@ -382,7 +382,7 @@ abstract type ProjectionAlgorithm end
             ## Make an updated alg with correct new range
             updated_alg = copy_alg(als.mttkrp_alg, new_num_start, new_num_end)
             
-            pivots = similar(als.additional_items[:projects])
+            pivots = deepcopy(als.additional_items[:projects])
             ref_pivs = deepcopy(als.additional_items[:ref_projectors])
             projectors = deepcopy(als.additional_items[:projects_tensors])
             targets = similar(als.additional_items[:target_transform])
