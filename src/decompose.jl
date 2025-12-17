@@ -2,6 +2,14 @@ function decompose(A, rank::Int; KWARGS...)
     decompose(A, Index(rank, "CP rank"); KWARGS...)
 end
 
+function decompose(A::AbstractArray, rank::Int; KWARGS...)
+    decompose(itensor(A, Index.(size(A))), Index(rank, "CP rank"); KWARGS...)
+end
+
+function decompose(A::AbstractArray, rank::Index; KWARGS...)
+    decompose(itensor(A, Index.(size(A))), rank; KWARGS...)
+end
+
 function decompose(
     A,
     rank_ind::Index;

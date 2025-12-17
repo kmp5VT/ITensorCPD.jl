@@ -67,6 +67,14 @@ function random_CPD(target::ITensor, rank::Index; rng = nothing)
     return CPD{ITensor}(factors, lambda)
 end
 
+function random_CPD(t::AbstractArray, rank::Index; rng = nothing)
+    factors, lambda = random_factors(eltype(t), Index.(size(t)), rank; rng)
+    dataT = NDTensors.datatype(itensor(t, Index.(size(t))))
+    factors = adapt.(dataT, factors)
+    lambda = adapt(dataT, lambda)
+    return CPD{ITensor}(factors, lambda)
+end
+
 ## TODO add a random hash key to label
 function random_CPD(target, rank::Int; rng = nothing)
     return random_CPD(target, ITensors.Index(rank, "CPD"); rng)
