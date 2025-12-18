@@ -1,4 +1,5 @@
 @testset "Standard CPD-ALS, elt=$elt" for elt in [Float64, ComplexF64]
+    elt = Float64
     verbose = false
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
@@ -57,10 +58,10 @@
     @test ITensorCPD.start(als.mttkrp_alg) == 1
     @test typeof(als.mttkrp_alg) == ITensorCPD.QRPivProjected
     @test als.additional_items[:effective_ranks][1] < 20
-    ITensorCPD.optimize(cp_A, als; verbose = true);
+    ITensorCPD.optimize(cp_A, als; verbose);
     
     int_opt_A =
-       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose=true, shuffle_pivots=true, trunc_tol=0.001);
+       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose, shuffle_pivots=true, trunc_tol=0.001);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
@@ -71,7 +72,7 @@
     @test ITensorCPD.stop(als.mttkrp_alg) == 600
     @test ITensorCPD.start(als.mttkrp_alg) == 1
     @test typeof(als.mttkrp_alg) == ITensorCPD.SEQRCSPivProjected
-    ITensorCPD.optimize(cp_A, als; verbose = true);
+    ITensorCPD.optimize(cp_A, als; verbose);
 
     int_opt_A =
         als_optimize(A, cp_A; alg = ITensorCPD.SEQRCSPivProjected((1,), (800,), (1,2,3),(100,100,100)),
@@ -95,6 +96,15 @@
         als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
+    check = ITensorCPD.CPAngleCheck(1e-5, 100)
+
+    cp_A = random_CPD(A, 10)
+    opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose);
+    exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
     ### Test for Leverage score sampling CPD 
     a,b,c = Index.((12,13,3))
     T = random_itensor(elt, a,b,c)
@@ -108,7 +118,7 @@
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
 
     alg = ITensorCPD.LevScoreSampled(100)
-    check=ITensorCPD.FitCheck(1e-3, 5, norm(T))
+    check = ITensorCPD.CPAngleCheck(1e-5, 10)
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
@@ -194,11 +204,12 @@ end
     A = ITensorCPD.reconstruct(random_CPD(A, 20))
 
     cp_A = random_CPD(A, 10)
-    check=ITensorCPD.FitCheck(1e-3, 5, norm(A))
-    opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose=true);
+    # check=ITensorCPD.FitCheck(1e-3, 5, norm(A))
+    check = ITensorCPD.CPAngleCheck(1e-3, 20)
+    opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose);
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(1200), check, verbose=true);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(1200), check, verbose);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     ### Test for Leverage score sampling CPD 

@@ -13,3 +13,4 @@ end
 include("no_check.jl")
 include("fit_check.jl")
 include("cp_diff_check.jl")
+include("cp_angle_check.jl")
