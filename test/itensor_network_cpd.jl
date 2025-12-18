@@ -10,7 +10,7 @@ using Random
 include("./util.jl")
 
 @testset "Known rank Network: eltype=:$(elt)" for elt in
-                                                 ( ComplexF32,)
+                                                 ( ComplexF32,Float32)
     nx = 3
     grid = named_grid((nx, 3))
     tn1 = random_tensornetwork(elt, grid; link_space = 1)
