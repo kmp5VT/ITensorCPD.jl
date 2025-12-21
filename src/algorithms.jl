@@ -291,6 +291,7 @@ abstract type ProjectionAlgorithm end
         BlockLevScoreSampled(n::Int, m::Int) = BlockLevScoreSampled((n,), (m,))
         BlockLevScoreSampled(n::Tuple) = BlockLevScoreSampled{n, (1,)}()
         BlockLevScoreSampled(n::Int, m::Tuple) = BlockLevScoreSampled((n,), m)
+        BlockLevScoreSampled(n::Tuple, m::Int) = BlockLevScoreSampled(n, (m,))
 
         nsamples(alg::BlockLevScoreSampled) = alg.NSamples
         blocks(alg::BlockLevScoreSampled) = alg.Blocks
