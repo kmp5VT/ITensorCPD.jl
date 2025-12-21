@@ -70,5 +70,3 @@ function check_converge(check::CPAngleCheck, factors, λ, partial_gram; verbose 
 end
 
 CPDFit(check::CPAngleCheck) = check.final_fit
-
-function save_mttkrp(::CPAngleCheck, ::ITensor) end

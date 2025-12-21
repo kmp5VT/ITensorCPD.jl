@@ -68,5 +68,3 @@ function check_converge(check::CPDiffCheck, factors, λ, partial_gram; verbose =
 end
 
 CPDFit(check::CPDiffCheck) = check.final_fit
-
-function save_mttkrp(::CPDiffCheck, ::ITensor) end
