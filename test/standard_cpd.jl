@@ -1,5 +1,4 @@
 @testset "Standard CPD-ALS, elt=$elt" for elt in [Float64, ComplexF64]
-    elt = Float64
     verbose = false
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
