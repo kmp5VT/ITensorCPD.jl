@@ -218,7 +218,7 @@ abstract type ProjectionAlgorithm end
                 krpproj = had_contract(factors[1], λ, cprank) * compute_krp(als.mttkrp_alg, als, factors, cpd, cprank, 1)
                 tproj =  matricize_tensor(als.mttkrp_alg, als, factors, cpd, cprank, 1)
 
-                cpfit = one(eltype(krpproj)) - norm(tproj - krpproj) / norm(tproj)
+                cpfit = one(real(eltype(krpproj))) - norm(tproj - krpproj) / norm(tproj)
 
                 println("$(dim(cprank))\t$(als.check.iter)\t$(cpfit)")
             end
