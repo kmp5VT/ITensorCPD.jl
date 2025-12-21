@@ -261,14 +261,14 @@ abstract type ProjectionAlgorithm end
             sampled_cols = sample_factor_matrices(nsamps, fact, als.additional_items[:factor_weights])
             ## Write new samples to pivot tensor
             dRis = dims(inds(cp)[1:end .!= fact])
-            data(als.additional_items[:pivot_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
             
-            return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:pivot_tensors][fact])[end])
+            return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:projects_tensors][fact])[end])
         end
 
         function matricize_tensor(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int)
             ## I need to turn this into an ITensor and then pass it to the computed algorithm.
-            return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
+            return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
         end
 
 
@@ -305,14 +305,14 @@ abstract type ProjectionAlgorithm end
             sampled_cols = block_sample_factor_matrices(nsamps, als.additional_items[:factor_weights], block_size, fact)
             ## Write new samples to pivot tensor
             dRis = dims(inds(cp)[1:end .!= fact])
-            data(als.additional_items[:pivot_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
             
-            return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:pivot_tensors][fact])[end])
+            return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:projects_tensors][fact])[end])
         end
 
         function matricize_tensor(::BlockLevScoreSampled, als, factors, cp, rank::Index, fact::Int)
             ## I need to turn this into an ITensor and then pass it to the computed algorithm.
-            return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
+            return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
         end
 
 
