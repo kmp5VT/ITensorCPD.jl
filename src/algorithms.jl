@@ -208,16 +208,19 @@ abstract type ProjectionAlgorithm end
         if als.check isa FitCheck
             if als.check.iter == 0
                 println("Warning: FitCheck is not enabled for $(als.mttkrp_alg) will run $(als.check.max_counter) iterations.")
+                if verbose
+                    println("Warning: Sampled fit will be provided")
+                end
             end
             als.check.iter += 1
             if verbose
-                inner_prod = real((had_contract([als.target, dag.(factors)...], cprank) * dag(λ))[])
-                partial_gram = [fact * dag(prime(fact; tags=tags(cprank))) for fact in factors];
-                fact_square = ITensorCPD.norm_factors(partial_gram, λ)
-                normResidual =
-                    sqrt(abs(als.check.ref_norm * als.check.ref_norm + fact_square - 2 * abs(inner_prod)))
-                elt = typeof(inner_prod)
-                println("$(dim(cprank))\t$(als.check.iter)\t$(one(elt) - normResidual / norm(als.check.ref_norm))")
+                cpd = CPD{ITensor}(factors, λ)
+                krpproj = had_contract(factors[1], λ, cprank) * compute_krp(als.mttkrp_alg, als, factors, cpd, cprank, 1)
+                tproj =  matricize_tensor(als.mttkrp_alg, als, factors, cpd, cprank, 1)
+
+                cpfit = one(eltype(krpproj)) - norm(tproj - krpproj) / norm(tproj)
+
+                println("$(dim(cprank))\t$(als.check.iter)\t$(cpfit)")
             end
             if als.check.iter == als.check.max_counter
                 als.check.iter = 0
