@@ -233,7 +233,7 @@ function compute_als(
     extra_args[:qr_factors] = qr_factors
     extra_args[:effective_ranks] = effective_ranks
     
-    return ALS(target, alg, extra_args, check)
+    return ALS(ITensor(inds(target)), alg, extra_args, check)
 end
 
 function compute_als(
@@ -317,7 +317,7 @@ function compute_als(
     extra_args[:qr_factors] = qr_factors
     extra_args[:effective_ranks] = effective_ranks
     
-    return ALS(target, alg, extra_args, check)
+    return ALS(ITensor(inds(target)), alg, extra_args, check)
 end
 
 function compute_als(
