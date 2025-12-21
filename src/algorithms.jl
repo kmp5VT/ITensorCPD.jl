@@ -395,7 +395,7 @@ abstract type ProjectionAlgorithm end
                 ## This is reshuffling the indices
                 if reshuffle
                     p1 = p[1:meff]
-                    p_rest = p[m+1:end]
+                    p_rest = p[meff+1:end]
                     p2 = p_rest[randperm(length(p_rest))]
                     pshuff = vcat(p1, p2)
                     
