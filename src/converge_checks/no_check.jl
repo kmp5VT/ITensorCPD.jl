@@ -17,5 +17,3 @@ function check_converge(check::NoCheck, factors, λ, partial_gram; verbose = fal
     check.counter += 1
     return false
 end
-
-function save_mttkrp(::NoCheck, ::ITensor) end

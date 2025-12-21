@@ -10,6 +10,8 @@ function norm_factors(partial_gram::Vector, λ::ITensor)
     return real(had*(λ*dag(prime(λ))))[]
 end
 
+save_mttkrp(::ConvergeAlg, ::ITensor) = nothing
+
 include("no_check.jl")
 include("fit_check.jl")
 include("cp_diff_check.jl")

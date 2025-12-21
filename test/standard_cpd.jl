@@ -1,5 +1,4 @@
 @testset "Standard CPD-ALS, elt=$elt" for elt in [Float64, ComplexF64]
-    elt = Float64
     verbose = false
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
@@ -53,7 +52,7 @@
     alg = ITensorCPD.QRPivProjected(800)
     als = ITensorCPD.compute_als(A, cp_A; alg, check, trunc_tol=4);
     
-    als = ITensorCPD.update_samples(als, 900; reshuffle = false);
+    als = ITensorCPD.update_samples(A, als, 900; reshuffle = false);
     @test ITensorCPD.stop(als.mttkrp_alg) == 900
     @test ITensorCPD.start(als.mttkrp_alg) == 1
     @test typeof(als.mttkrp_alg) == ITensorCPD.QRPivProjected
@@ -68,7 +67,7 @@
     alg = ITensorCPD.SEQRCSPivProjected(1, 800, (1,2,3),(100,100,100))
     als = ITensorCPD.compute_als(A, cp_A; alg, check);
     
-    als = ITensorCPD.update_samples(als, 600; reshuffle = true);
+    als = ITensorCPD.update_samples(A, als, 600; reshuffle = true);
     @test ITensorCPD.stop(als.mttkrp_alg) == 600
     @test ITensorCPD.start(als.mttkrp_alg) == 1
     @test typeof(als.mttkrp_alg) == ITensorCPD.SEQRCSPivProjected
@@ -124,6 +123,25 @@
 
     ### Test for Leverage score sampling CPD 
     alg = ITensorCPD.LevScoreSampled((50, 50, 500))
+    min_val = 1
+    for i in 1:3
+        cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
+        val = norm(reconstruct(cpd_opt) - T) / norm(T) 
+        min_val = val < min_val ? val : val
+    end
+     @test min_val < 0.1
+
+    ### Test for Leverage score sampling CPD 
+    alg = ITensorCPD.BlockLevScoreSampled((50, 50, 500), 1)
+    min_val = 1
+    for i in 1:3
+        cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
+        val = norm(reconstruct(cpd_opt) - T) / norm(T) 
+        min_val = val < min_val ? val : val
+    end
+     @test min_val < 0.1
+
+     alg = ITensorCPD.BlockLevScoreSampled((50, 50, 500), 12)
     min_val = 1
     for i in 1:3
         cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
@@ -225,6 +243,14 @@ end
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
 
     alg = ITensorCPD.LevScoreSampled(100)
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
+    @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
+
+    alg = ITensorCPD.BlockLevScoreSampled(100,1)
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
+    @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
+
+    alg = ITensorCPD.BlockLevScoreSampled(100,3)
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 end

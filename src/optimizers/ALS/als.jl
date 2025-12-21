@@ -233,7 +233,7 @@ function compute_als(
     extra_args[:qr_factors] = qr_factors
     extra_args[:effective_ranks] = effective_ranks
     
-    return ALS(target, alg, extra_args, check)
+    return ALS(ITensor(inds(target)), alg, extra_args, check)
 end
 
 function compute_als(
@@ -317,7 +317,7 @@ function compute_als(
     extra_args[:qr_factors] = qr_factors
     extra_args[:effective_ranks] = effective_ranks
     
-    return ALS(target, alg, extra_args, check)
+    return ALS(ITensor(inds(target)), alg, extra_args, check)
 end
 
 function compute_als(
@@ -362,7 +362,7 @@ function compute_als(
 )
     ## For each factor matrix compute its weights
     extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
-    pivot_tensors = Vector{ITensor}()
+    projects_tensors = Vector{ITensor}()
     for fact in 1:length(cp)
         ## grab the tensor indices for all other factors but fact
         Ris = inds(cp)[1:end .!= fact]
@@ -380,9 +380,9 @@ function compute_als(
         piv_ind = Index(length(sampled_tensor_cols), "selector_$(fact)")
 
         ## make the canonical pivot tensor. This list of pivots will be overwritten each ALS iteration
-        push!(pivot_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
+        push!(projects_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
     end
-    extra_args[:pivot_tensors] = pivot_tensors
+    extra_args[:projects_tensors] = projects_tensors
     return ALS(target, alg, extra_args, check)
 end
 
@@ -396,7 +396,7 @@ function compute_als(
 )
     ## For each factor matrix compute its weights
     extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
-    pivot_tensors = Vector{ITensor}()
+    projects_tensors = Vector{ITensor}()
     for fact in 1:length(cp)
         ## grab the tensor indices for all other factors but fact
         Ris = inds(cp)[1:end .!= fact]
@@ -417,11 +417,11 @@ function compute_als(
         piv_ind = Index(length(sampled_tensor_cols), "selector_$(fact)")
 
         ## make the canonical pivot tensor. This list of pivots will be overwritten each ALS iteration
-        push!(pivot_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
+        push!(projects_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
     end
     ## Notice the pivot tensor is actually a low rank tensor it stores the diagonal pivot values
     ## in α form (rows of the matricized tensor) and the indices which are captured in the pivot.
     ## The order of indices are (indices which connect to the pivot, pivot_index).
-    extra_args[:pivot_tensors] = pivot_tensors
+    extra_args[:projects_tensors] = projects_tensors
     return ALS(target, alg, extra_args, check)
 end

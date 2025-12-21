@@ -208,16 +208,19 @@ abstract type ProjectionAlgorithm end
         if als.check isa FitCheck
             if als.check.iter == 0
                 println("Warning: FitCheck is not enabled for $(als.mttkrp_alg) will run $(als.check.max_counter) iterations.")
+                if verbose
+                    println("Warning: Sampled fit will be provided")
+                end
             end
             als.check.iter += 1
             if verbose
-                inner_prod = real((had_contract([als.target, dag.(factors)...], cprank) * dag(λ))[])
-                partial_gram = [fact * dag(prime(fact; tags=tags(cprank))) for fact in factors];
-                fact_square = ITensorCPD.norm_factors(partial_gram, λ)
-                normResidual =
-                    sqrt(abs(als.check.ref_norm * als.check.ref_norm + fact_square - 2 * abs(inner_prod)))
-                elt = typeof(inner_prod)
-                println("$(dim(cprank))\t$(als.check.iter)\t$(one(elt) - normResidual / norm(als.check.ref_norm))")
+                cpd = CPD{ITensor}(factors, λ)
+                krpproj = had_contract(factors[1], λ, cprank) * compute_krp(als.mttkrp_alg, als, factors, cpd, cprank, 1)
+                tproj =  matricize_tensor(als.mttkrp_alg, als, factors, cpd, cprank, 1)
+
+                cpfit = one(real(eltype(krpproj))) - norm(tproj - krpproj) / norm(tproj)
+
+                println("$(dim(cprank))\t$(als.check.iter)\t$(cpfit)")
             end
             if als.check.iter == als.check.max_counter
                 als.check.iter = 0
@@ -258,14 +261,14 @@ abstract type ProjectionAlgorithm end
             sampled_cols = sample_factor_matrices(nsamps, fact, als.additional_items[:factor_weights])
             ## Write new samples to pivot tensor
             dRis = dims(inds(cp)[1:end .!= fact])
-            data(als.additional_items[:pivot_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
             
-            return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:pivot_tensors][fact])[end])
+            return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:projects_tensors][fact])[end])
         end
 
         function matricize_tensor(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int)
             ## I need to turn this into an ITensor and then pass it to the computed algorithm.
-            return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
+            return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
         end
 
 
@@ -288,6 +291,7 @@ abstract type ProjectionAlgorithm end
         BlockLevScoreSampled(n::Int, m::Int) = BlockLevScoreSampled((n,), (m,))
         BlockLevScoreSampled(n::Tuple) = BlockLevScoreSampled{n, (1,)}()
         BlockLevScoreSampled(n::Int, m::Tuple) = BlockLevScoreSampled((n,), m)
+        BlockLevScoreSampled(n::Tuple, m::Int) = BlockLevScoreSampled(n, (m,))
 
         nsamples(alg::BlockLevScoreSampled) = alg.NSamples
         blocks(alg::BlockLevScoreSampled) = alg.Blocks
@@ -302,14 +306,14 @@ abstract type ProjectionAlgorithm end
             sampled_cols = block_sample_factor_matrices(nsamps, als.additional_items[:factor_weights], block_size, fact)
             ## Write new samples to pivot tensor
             dRis = dims(inds(cp)[1:end .!= fact])
-            data(als.additional_items[:pivot_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
             
-            return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:pivot_tensors][fact])[end])
+            return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:projects_tensors][fact])[end])
         end
 
         function matricize_tensor(::BlockLevScoreSampled, als, factors, cp, rank::Index, fact::Int)
             ## I need to turn this into an ITensor and then pass it to the computed algorithm.
-            return fused_flatten_sample(als.target, fact, als.additional_items[:pivot_tensors][fact])
+            return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
         end
 
 
@@ -376,7 +380,7 @@ abstract type ProjectionAlgorithm end
         ## need to recompute the QR. This is a "dumb" algorithm because it resamples the full
         ## target tensor so a future algorithm should just modify the target to reduce the amount of work.
         ## reshuffle redoes the sampling of the pivots beyond the rank of the matrix.
-        function update_samples(als, new_num_end; reshuffle = false, new_num_start = 0)
+        function update_samples(target, als, new_num_end; reshuffle = false, new_num_start = 0)
             @assert(als.mttkrp_alg isa PivotBasedSolvers)
             
             ## Make an updated alg with correct new range
@@ -391,7 +395,7 @@ abstract type ProjectionAlgorithm end
                 ## This is reshuffling the indices
                 if reshuffle
                     p1 = p[1:meff]
-                    p_rest = p[m+1:end]
+                    p_rest = p[meff+1:end]
                     p2 = p_rest[randperm(length(p_rest))]
                     pshuff = vcat(p1, p2)
                     
@@ -415,7 +419,7 @@ abstract type ProjectionAlgorithm end
 
                 projectors[pos] =  itensor(tensor(Diag(pivots[pos][int_start:int_end]), (Ris..., piv_id)))
 
-                targets[pos] = fused_flatten_sample(als.target, pos, projectors[pos])
+                targets[pos] = fused_flatten_sample(target, pos, projectors[pos])
             end
 
             extra_args = Dict(
