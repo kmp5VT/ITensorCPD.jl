@@ -379,7 +379,7 @@ abstract type ProjectionAlgorithm end
         ## need to recompute the QR. This is a "dumb" algorithm because it resamples the full
         ## target tensor so a future algorithm should just modify the target to reduce the amount of work.
         ## reshuffle redoes the sampling of the pivots beyond the rank of the matrix.
-        function update_samples(als, new_num_end; reshuffle = false, new_num_start = 0)
+        function update_samples(target, als, new_num_end; reshuffle = false, new_num_start = 0)
             @assert(als.mttkrp_alg isa PivotBasedSolvers)
             
             ## Make an updated alg with correct new range
@@ -418,7 +418,7 @@ abstract type ProjectionAlgorithm end
 
                 projectors[pos] =  itensor(tensor(Diag(pivots[pos][int_start:int_end]), (Ris..., piv_id)))
 
-                targets[pos] = fused_flatten_sample(als.target, pos, projectors[pos])
+                targets[pos] = fused_flatten_sample(target, pos, projectors[pos])
             end
 
             extra_args = Dict(
