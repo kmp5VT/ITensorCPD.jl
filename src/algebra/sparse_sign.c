@@ -28,19 +28,19 @@ void sparse_sign(int d, int m, int zeta, double* vals, int* rows, int* colstarts
     long i;
 	for (int i = 0; i+bit_per_rand < nnz; i += bit_per_rand) {
         for (int j = i; j < i+bit_per_rand; ++j) {
-	        vals[j] = (myrand % 2) * increment + lowval;
+	        *(vals + j) = (myrand % 2) * increment + lowval;
             myrand = myrand >> 1;
         }
         myrand = rand();
 	}
     for (int i = bit_per_rand*(nnz/bit_per_rand); i < nnz; ++i) {
-        vals[i] = (myrand % 2) * increment + lowval;
+        *(vals + i) = (myrand % 2) * increment + lowval;
         myrand = myrand >> 1;
     }
 
 	// Set column starts
 	for (int i = 1; i < m+1; ++i){
-	    colstarts[i] = i*zeta;
+	    *(colstarts + i) = i*zeta;
 	}
 
 	// Set row indices
@@ -49,7 +49,7 @@ void sparse_sign(int d, int m, int zeta, double* vals, int* rows, int* colstarts
     for (int i = 0; i < m*zeta; i += zeta) {
 	    int idx = 0;
 	    while (idx < zeta) {
-		    rows[i+idx] = myrand % d;
+		    *(rows + i+idx) = myrand % d;
             ir++;
             if (ir == idx_per_rand) {
                 ir = 0;
@@ -59,7 +59,7 @@ void sparse_sign(int d, int m, int zeta, double* vals, int* rows, int* colstarts
             }
 		    int j = 0;
 		    for (; j < idx; ++j) {
-		        if (rows[i+idx] == rows[i+j]) break;
+		        if (*(rows + i+idx) == *(rows + i+j)) break;
 		    }
 		    idx += (int) (j == idx);
 	    }
