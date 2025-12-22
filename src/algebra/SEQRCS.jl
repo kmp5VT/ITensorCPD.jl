@@ -64,7 +64,7 @@ SIAM Journal on Matrix Analysis and Applications, 45(4), 1782-1804, 2024
 }
 
 """
-function SEQRCS(A:: ITensor,mode::Int,i,l,s,t)
+function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
 
     Ris = uniqueinds(A, i)         
     n = dim(Ris)
@@ -96,11 +96,13 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t)
     ## Form  A_rem to get the factor 'R' 
     ## We can remove this part no need to get Q and R
     ## but keeping it just to make sure that the function is performing well
-    rem_indices_ind = Index(length(rem_indices),"rem_ind")
-    rem_indices_tensor = itensor(rem_indices, rem_indices_ind)
-    A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
-    A_rem = matrix(A_rem)
-    R = hcat(R,Q'*A_rem)
+    if compute_r
+        rem_indices_ind = Index(length(rem_indices),"rem_ind")
+        rem_indices_tensor = itensor(rem_indices, rem_indices_ind)
+        A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
+        A_rem = matrix(A_rem)
+        R = hcat(R,Q'*A_rem)
+    end
 
     return Q,R,p
 
