@@ -184,15 +184,18 @@ function compute_als(
         m = dim(i)
         Tmat = reshape(array(target, (i, Ris...)), (m, dim(Ris)))
         q, r, p = qr(Tmat, ColumnNorm())
+        dr = diag(r)
+        r = nothing
+        GC.gc()
         #meff = sum(abs.(diag(r)) .> trunc_tol)
-        meff = sum(abs.(diag(r)) ./ maximum(abs.(diag(r))) .> trunc_tol)
+        meff = sum(abs.(dr) ./ maximum(abs.(dr)) .> trunc_tol)
         push!(effective_ranks, meff)
         
         #q,r,p = lu(Tmat', RowMaximum(), allowsingular=true)
         
         ### QR based inital guess strategy.
         idx = Index(m, "rank")
-        qt = had_contract(itensor(copy(q), Index(m),idx), itensor(diag(r), idx), idx)
+        qt = had_contract(itensor(copy(q), Index(m),idx), itensor(dr, idx), idx)
         q = array(qt)
         push!(qr_factors, q)
 
@@ -283,11 +286,14 @@ function compute_als(
             Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
             q, r, p = qr(Tmat, ColumnNorm())
         end
+        dr = diag(r)
+        r = nothing
+        GC.gc()
 
         push!(ref_pivs, deepcopy(p))
 
-        # meff = sum(abs.(diag(r)) .> trunc_tol)
-        meff = sum(abs.(diag(r)) ./ maximum(abs.(diag(r))) .> trunc_tol)
+        # meff = sum(abs.(diag(r)) ./ maximum(abs.(diag(r))) .> trunc_tol)
+        meff = sum(abs.(dr) ./ maximum(abs.(dr)) .> trunc_tol)
         push!(effective_ranks, meff)
         p1 = p[1:meff]
         ## We skip the rest of the pivots in p because we assume we took all the important directions already
@@ -298,7 +304,7 @@ function compute_als(
 
         ### QR based inital guess strategy.
         idx = Index(m, "rank")
-        qt = had_contract(itensor(copy(q), Index(m),idx), itensor(diag(r), idx), idx)
+        qt = had_contract(itensor(copy(q), Index(m),idx), itensor(dr, idx), idx)
         q = array(qt)
         push!(qr_factors, q)
 
