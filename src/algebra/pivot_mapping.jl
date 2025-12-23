@@ -83,6 +83,32 @@ function  sketched_matricization(T::ITensor, k::Int, omega)
   Om_slice = eachcol(omega)
   stride = strides(T.tensor)[k]
   for j in 1:l
+    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), findall(!iszero, Om_slice[j]))
+    As_slice[j] .= [sum(@view v[pos .+ stride* (i-1)]) for i in 1:dim(idx)]
+  end
+  return As
+end
+
+## For each column in omega there are s nonzero values 
+## We give this a lost on nonzero row values in omega ordered from [1,1,1,...1, 2,2,2...,2, ..., col,col,col,...]
+## Where the number of nonzeros in col_i = s.
+## What we do is find the position of each nonzero in the row order (divide by s) and then look up in vals what the value 
+## of said nonzero is.
+function  sketched_matricization(T::ITensor, k::Int, l, rows, vals, s)
+  v = vec(NDTensors.data(T))
+  
+  idx = ind(T, k)
+  As = similar(NDTensors.similartype(NDTensors.data(T), (1,2)), dim(idx), l)
+  As_slice = eachcol(As)
+  
+  ## This is effectively the cols of omega transpose without having to construct omega.
+  pos_nz_cols = Array{Vector{Int64}}(undef, l)
+  for i in 1:l
+      pos_nz_cols[i] = findall(x -> x==i, rows)
+  end
+
+  stride = strides(T.tensor)[k]
+  for j in 1:l
     pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), findall(!iszero,@view Om_slice[j]))
     As_slice[j] .= [sum(@view v[pos .+ stride* (i-1)]) for i in 1:dim(idx)]
   end
