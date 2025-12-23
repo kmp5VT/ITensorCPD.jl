@@ -43,6 +43,20 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int)
     return sparse(rows .+ 1, cols .+ 1, vals, l, n)
 end
 
+function sparse_sign_matrix!(l::Int, n::Int, s::Int, rows, vals) 
+    colstarts = Array{Int32}(undef, n+1)
+    ccall((
+        :sparse_sign,
+        libsparse
+        ),
+        Cvoid,
+        (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
+        l, n, s, vals, rows, colstarts
+    )
+    rows .+= 1 
+    return nothing
+end
+
 """
 SEQRCS(A,l,s,k,t)
 
