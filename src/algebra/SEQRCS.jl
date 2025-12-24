@@ -25,7 +25,7 @@ end
 
 
 ##Wrapping the sparse_sign file into a julia function
-function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals)        
+function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals; omega = false)
     colstarts = Array{Int32}(undef, n+1)
     ccall((
         :sparse_sign,
@@ -35,12 +35,16 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals)
         (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
         l, n, s, vals, rows, colstarts
     )
-    # cols = repeat(0:n-1, inner=s)
-    #omega = sparse(rows .+ 1, cols .+ 1, vals, l, n)
-    rows .+= 1
-    # return rows.+1, vals 
+    if omega
+        rows .+= one(Int32)
+        cols = repeat(1:n, inner=s)
+        return sparse(rows, cols, vals, l, n)
+    end
+    rows .+= one(Int32)
     return nothing
 end
+
+
 
 """
 SEQRCS(A,l,s,k,t)

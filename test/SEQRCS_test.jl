@@ -8,11 +8,10 @@ using SparseArrays: sparse
     n = 10000       
     s = 8        
     l = 1200
-    rows = Vector{Int}(undef, n * s)
+    rows = Vector{Int32}(undef, n * s)
     vals = Vector{Float64}(undef, n * s)
-    sparse_sign_matrix(l, n, s, rows, vals) 
-    cols = repeat(1:n, inner=s)
-    omega = sparse(rows, cols, vals, l, n)
+    omega = sparse_sign_matrix(l, n, s, rows, vals;omega=true)
+    
     @test size(omega) == (l, n)
     @test all(sum(!iszero, omega[:, j]) == s for j in 1:n)
     @test length(rows) == (n * s)
@@ -23,7 +22,7 @@ using SparseArrays: sparse
     act_singular = S.S
     A_sk_old = omega*A
     A_sk = ITensorCPD.sketched_matricization(itensor(A', Index.(size(A'))), 1, l, rows, vals, s)
-    norm(A_sk_old - A_sk') ≈ 0
+    @test norm(A_sk_old - A_sk') ≈ 0
     S_sk = svd(A_sk')
     sk_singular = S_sk.S
     @test all(0.5<=v<=1.5 for v in sk_singular./act_singular)
