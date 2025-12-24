@@ -108,7 +108,7 @@ function  sketched_matricization(T::ITensor, k::Int, l, rows, vals, s)
   for j in 1:l
     nzs = findall(x -> x==j, rows)
     pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), nzs)
-    As_slice[j] .= [sum(@view v[pos .+ stride* (i-1)]) for i in 1:dim(idx)]
+    As_slice[j] .= [sum(v[pos .+ stride* (i-1)].* vals[nzs]) for i in 1:dim(idx)]
   end
   return As
 end
