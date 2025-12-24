@@ -3,11 +3,11 @@ using ITensorCPD:SEQRCS, sparse_sign_matrix
 
 ### testing the generation of sparse matrix
 @testset "S-Hashing matrix generation" begin
-    m = 200      
+    m = 10      
     n = 10000       
     s = 8        
     l = 1200
-    omega = sparse_sign_matrix(l, n, s) 
+    _,_,omega = sparse_sign_matrix(l, n, s) 
     @test size(omega) == (l, n)
     @test all(sum(!iszero, omega[:, j]) == s for j in 1:n)
     @test all(v == 0.0 || v == 1/sqrt(s) || v == -1/sqrt(s) for v in omega)
