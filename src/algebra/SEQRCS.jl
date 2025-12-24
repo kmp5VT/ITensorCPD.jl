@@ -36,11 +36,11 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals; omega = false)
         l, n, s, vals, rows, colstarts
     )
     if omega
-        rows .+= one(Int32)
+        @inbounds rows .+= one(Int32)
         cols = repeat(1:n, inner=s)
         return sparse(rows, cols, vals, l, n)
     end
-    rows .+= one(Int32)
+    @inbounds rows .+= one(Int32)
     return nothing
 end
 
@@ -82,27 +82,18 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     A_sk = sketched_matricization(A, mode, l, rows, vals, s)
     
     _, _, p_sk = qr!(A_sk, ColumnNorm())  
-    p_sk = @view p_sk[1:t]
+    @inbounds p_sk = @view p_sk[1:t]
     println("The size of A_sk is $(size(A_sk))")
-
-    ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
-    # rows_sel = omega[p_sk,:]
-    # omega = nothing;
-    # for i in 1:n
-    #     if !isempty(rows_sel[:,i].nzind)
-    #         indices = vcat(indices, i)
-    #     end
-    # end
     
-    ## TODO working here, this makes so much memory and takes
-    ## Significantly longer than the other portions.
+    ## TODO working here.
     indices = Vector{Int}()
-    rows = reshape(rows, (n, s))
-    erow = eachrow(rows)
-    for (i,rnow) in zip(1:n, erow)
-        r = rnow ∩ p_sk
-        if !isempty(r)
-            push!(indices, i)
+    for i in 1:n
+        @inbounds r = @view rows[(i-1) * s + 1: i * s]
+        for j in 1:s
+            if (@inbounds r[j] ∈ p_sk)
+                push!(indices, i)
+                break
+            end
         end
     end
     indices_ind = Index(length(indices),"ind")
