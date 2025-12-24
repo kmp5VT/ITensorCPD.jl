@@ -97,13 +97,12 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     ## TODO working here, this makes so much memory and takes
     ## Significantly longer than the other portions.
     indices = Vector{Int}()
-    for i in 1:n
-        r = @view rows[(i-1) * s + 1: i * s]
-        for j in 1:s
-            if r[j] ∈ p_sk
-                push!(indices, i)
-                break
-            end
+    rows = reshape(rows, (n, s))
+    erow = eachrow(rows)
+    for (i,rnow) in zip(1:n, erow)
+        r = rnow ∩ p_sk
+        if !isempty(r)
+            push!(indices, i)
         end
     end
     indices_ind = Index(length(indices),"ind")
