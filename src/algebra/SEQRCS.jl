@@ -78,7 +78,7 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     A_sk = sketched_matricization(A, mode, l, rows, vals, s)
     
     _, _, p_sk = qr!(A_sk, ColumnNorm())  
-    p_sk=p_sk[1:t]
+    p_sk = @view p_sk[1:t]
     println("The size of A_sk is $(size(A_sk))")
 
     ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
