@@ -84,6 +84,7 @@ function  sketched_matricization(T::ITensor, k::Int, omega)
   stride = strides(T.tensor)[k]
   for j in 1:l
     pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), findall(!iszero, Om_slice[j]))
+    ## Shouldn't we multiply by + or - 1 based on the sign of omega here?
     As_slice[j] .= [sum(@view v[pos .+ stride* (i-1)]) for i in 1:dim(idx)]
   end
   return As
@@ -102,14 +103,11 @@ function  sketched_matricization(T::ITensor, k::Int, l, rows, vals, s)
   As_slice = eachcol(As)
   
   ## This is effectively the cols of omega transpose without having to construct omega.
-  pos_nz_cols = Array{Vector{Int64}}(undef, l)
-  for i in 1:l
-      pos_nz_cols[i] = findall(x -> x==i, rows)
-  end
 
   stride = strides(T.tensor)[k]
   for j in 1:l
-    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), findall(!iszero,@view Om_slice[j]))
+    nzs = findall(x -> x==j, rows)
+    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), nzs)
     As_slice[j] .= [sum(@view v[pos .+ stride* (i-1)]) for i in 1:dim(idx)]
   end
   return As

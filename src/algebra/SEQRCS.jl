@@ -40,7 +40,7 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int)
         l, n, s, vals, rows, colstarts
     )
     cols = repeat(0:n-1, inner=s)
-    return sparse(rows .+ 1, cols .+ 1, vals, l, n)
+    return rows, vals, sparse(rows .+ 1, cols .+ 1, vals, l, n)
 end
 
 function sparse_sign_matrix!(l::Int, n::Int, s::Int, rows, vals) 
@@ -84,10 +84,11 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     n = dim(Ris)
 
     # Generate sparse embedding
-    omega = sparse_sign_matrix(l,n,s)
+    rows, vals, omega = sparse_sign_matrix(l,n,s)
 
     # Sketch the matrix and applying QR 
-    A_sk = sketched_matricization(A, mode , omega')
+    # A_sk = sketched_matricization(A, mode , omega')
+    A_sk = sketched_matricization(A, mode, l, rows .+ 1, vals, s)
     
     _, _, p_sk = qr!(A_sk, ColumnNorm())  
     p_sk=p_sk[1:t]
