@@ -76,13 +76,13 @@ end
 
 function  sketched_matricization(T::ITensor, k::Int, omega)
   v = vec(NDTensors.data(T))
-  l = size(omega,2)
+  l = size(omega,1)
   idx = ind(T, k)
   As = similar(NDTensors.similartype(NDTensors.data(T), (1,2)), dim(idx), l)
   As_slice = eachcol(As)
   stride = strides(T.tensor)[k]
   for j in 1:l
-    m = omega[:,j];
+    m = omega[j,:];
     pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), m.nzind)
     ## Shouldn't we multiply by + or - 1 based on the sign of omega here?
     As_slice[j] .= [sum((@view v[pos .+ stride* (i-1)]) .* m.nzval) for i in 1:dim(idx)]

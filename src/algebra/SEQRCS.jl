@@ -87,8 +87,8 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     rows, vals, omega = sparse_sign_matrix(l,n,s)
 
     # Sketch the matrix and applying QR 
-    # A_sk = sketched_matricization(A, mode , omega')
-    A_sk = sketched_matricization(A, mode, l, rows .+ 1, vals, s)
+    A_sk = sketched_matricization(A, mode , omega)
+    #  A_sk = sketched_matricization(A, mode, l, rows .+ 1, vals, s)
     
     _, _, p_sk = qr!(A_sk, ColumnNorm())  
     p_sk=p_sk[1:t]
