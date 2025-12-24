@@ -8,7 +8,9 @@ using SparseArrays: sparse
     n = 10000       
     s = 8        
     l = 1200
-    rows,vals = sparse_sign_matrix(l, n, s) 
+    rows = Vector{Int}(undef, n * s)
+    vals = Vector{Float64}(undef, n * s)
+    sparse_sign_matrix(l, n, s, rows, vals) 
     cols = repeat(1:n, inner=s)
     omega = sparse(rows, cols, vals, l, n)
     @test size(omega) == (l, n)
