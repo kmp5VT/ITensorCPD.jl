@@ -96,10 +96,12 @@ end
 ## What we do is find the position of each nonzero in the row order (divide by s) and then look up in vals what the value 
 ## of said nonzero is.
 function  sketched_matricization(T::ITensor, k::Int, l, rows, vals, s)
-  v = vec(NDTensors.data(T))
+  v = NDTensors.data(T)
   
   idx = ind(T, k)
-  As = similar(NDTensors.similartype(NDTensors.data(T), (1,2)), dim(idx), l)
+  didx = dim(idx)
+
+  As = similar(NDTensors.similartype(NDTensors.data(T), (1,2)), didx, l)
   As_slice = eachcol(As)
   
   ## This is effectively the cols of omega transpose without having to construct omega.
@@ -107,9 +109,10 @@ function  sketched_matricization(T::ITensor, k::Int, l, rows, vals, s)
   stride = strides(T.tensor)[k]
   for j in 1:l
     nzs = findall(x -> x==j, rows)
-    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride),
+    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, didx, stride),
                        nzs .÷ s + [i % s > 0 ? 1 : 0 for i in nzs])
-    As_slice[j] .= [sum(v[pos .+ stride* (i-1)].* vals[nzs]) for i in 1:dim(idx)]
+    m2 = @view vals[nzs]
+    As_slice[j] .= [dot((@view v[pos .+ stride* (i-1)]), m2) for i in 1:didx]
   end
   return As
 end
