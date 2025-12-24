@@ -84,12 +84,15 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
     # rows_sel = omega[p_sk,:]
     # omega = nothing;
-    indices = Vector{Int}()
     # for i in 1:n
     #     if !isempty(rows_sel[:,i].nzind)
     #         indices = vcat(indices, i)
     #     end
     # end
+    
+    ## TODO working here, this makes so much memory and takes
+    ## Significantly longer than the other portions.
+    indices = Vector{Int}()
     for i in 1:n
         r = @view rows[(i-1) * s + 1: i * s]
         for j in 1:s
