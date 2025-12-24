@@ -39,22 +39,9 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int)
         (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
         l, n, s, vals, rows, colstarts
     )
-    cols = repeat(0:n-1, inner=s)
-    return rows.+1, vals, sparse(rows .+ 1, cols .+ 1, vals, l, n)
-end
-
-function sparse_sign_matrix!(l::Int, n::Int, s::Int, rows, vals) 
-    colstarts = Array{Int32}(undef, n+1)
-    ccall((
-        :sparse_sign,
-        libsparse
-        ),
-        Cvoid,
-        (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
-        l, n, s, vals, rows, colstarts
-    )
-    rows .+= 1 
-    return nothing
+    # cols = repeat(0:n-1, inner=s)
+    #omega = sparse(rows .+ 1, cols .+ 1, vals, l, n)
+    return rows.+1, vals 
 end
 
 """
@@ -84,7 +71,7 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     n = dim(Ris)
 
     # Generate sparse embedding
-    rows, vals, omega = sparse_sign_matrix(l,n,s)
+    rows, vals = sparse_sign_matrix(l,n,s)
 
     # Sketch the matrix and applying QR 
     # A_sk = sketched_matricization(A, mode , omega)
@@ -95,9 +82,23 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     println("The size of A_sk is $(size(A_sk))")
 
     ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
-    rows_sel = omega[p_sk,:]
-    omega = nothing;
-    indices = findall(col -> any(!=(0), col), eachcol(rows_sel))
+    # rows_sel = omega[p_sk,:]
+    # omega = nothing;
+    indices = Vector{Int}()
+    # for i in 1:n
+    #     if !isempty(rows_sel[:,i].nzind)
+    #         indices = vcat(indices, i)
+    #     end
+    # end
+    for i in 1:n
+        r = @view rows[(i-1) * s + 1: i * s]
+        for j in 1:s
+            if r[j] ∈ p_sk
+                push!(indices, i)
+                break
+            end
+        end
+    end
     indices_ind = Index(length(indices),"ind")
     indices_tensor = itensor(Int, indices, indices_ind)
     println("The size of A_subset is $(length(indices))")
@@ -118,7 +119,6 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
         R = hcat(R,Q'*A_rem)
     end
 
-    GC.gc()
     return Q,R,p
 
 end
