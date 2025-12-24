@@ -1,5 +1,6 @@
 using LinearAlgebra,Random
 using ITensorCPD:SEQRCS, sparse_sign_matrix
+using SparseArrays: sparse
 
 ### testing the generation of sparse matrix
 @testset "S-Hashing matrix generation" begin
@@ -7,16 +8,21 @@ using ITensorCPD:SEQRCS, sparse_sign_matrix
     n = 10000       
     s = 8        
     l = 1200
-    _,_,omega = sparse_sign_matrix(l, n, s) 
+    rows,vals = sparse_sign_matrix(l, n, s) 
+    cols = repeat(1:n, inner=s)
+    omega = sparse(rows, cols, vals, l, n)
     @test size(omega) == (l, n)
     @test all(sum(!iszero, omega[:, j]) == s for j in 1:n)
-    @test all(v == 0.0 || v == 1/sqrt(s) || v == -1/sqrt(s) for v in omega)
+    @test length(rows) == (n * s)
+    @test all(v == 0.0 || v == 1/sqrt(s) || v == -1/sqrt(s) for v in vals)
 
     A = randn(n,m)
     S=svd(A)
     act_singular = S.S
-    A_sk = omega*A
-    S_sk = svd(A_sk)
+    A_sk_old = omega*A
+    A_sk = ITensorCPD.sketched_matricization(itensor(A', Index.(size(A'))), 1, l, rows, vals, s)
+    norm(A_sk_old - A_sk') ≈ 0
+    S_sk = svd(A_sk')
     sk_singular = S_sk.S
     @test all(0.5<=v<=1.5 for v in sk_singular./act_singular)
 end
