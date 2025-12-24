@@ -25,11 +25,7 @@ end
 
 
 ##Wrapping the sparse_sign file into a julia function
-function sparse_sign_matrix(l::Int, n::Int, s::Int)
-
-    nnz=n*s
-    vals = Array{Float64}(undef, nnz)
-    rows = Array{Int32}(undef, nnz)          
+function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals)        
     colstarts = Array{Int32}(undef, n+1)
     ccall((
         :sparse_sign,
@@ -41,7 +37,9 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int)
     )
     # cols = repeat(0:n-1, inner=s)
     #omega = sparse(rows .+ 1, cols .+ 1, vals, l, n)
-    return rows.+1, vals 
+    rows .+= 1
+    # return rows.+1, vals 
+    return nothing
 end
 
 """
@@ -71,7 +69,9 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     n = dim(Ris)
 
     # Generate sparse embedding
-    rows, vals = sparse_sign_matrix(l,n,s)
+    vals = Array{Float64}(undef, n * s)
+    rows = Array{Int32}(undef, n * s)
+    sparse_sign_matrix(l,n,s, rows, vals)
 
     # Sketch the matrix and applying QR 
     # A_sk = sketched_matricization(A, mode , omega)
