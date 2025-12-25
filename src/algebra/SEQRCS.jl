@@ -82,15 +82,16 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     A_sk = sketched_matricization(A, mode, l, rows, vals, s)
     
     _, _, p_sk = qr!(A_sk, ColumnNorm())  
-    @inbounds p_sk = @view p_sk[1:t]
+    p_sk = (@inbounds p_sk[1:t]) .=> 1
     println("The size of A_sk is $(size(A_sk))")
     
-    ## TODO working here.
+    ## TODO working here. This can be threadwise parallelized which
+    ## Will help with the cost. 
     indices = Vector{Int}()
     for i in 1:n
         @inbounds r = @view rows[(i-1) * s + 1: i * s]
         for j in 1:s
-            if (@inbounds r[j] ∈ p_sk)
+            if haskey(p_sk, (@inbounds r[j]))
                 push!(indices, i)
                 break
             end
