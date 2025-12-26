@@ -25,11 +25,7 @@ end
 
 
 ##Wrapping the sparse_sign file into a julia function
-function sparse_sign_matrix(l::Int, n::Int, s::Int)
-
-    nnz=n*s
-    vals = Array{Float64}(undef, nnz)
-    rows = Array{Int32}(undef, nnz)          
+function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals; omega = false)
     colstarts = Array{Int32}(undef, n+1)
     ccall((
         :sparse_sign,
@@ -39,9 +35,16 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int)
         (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
         l, n, s, vals, rows, colstarts
     )
-    cols = repeat(0:n-1, inner=s)
-    return sparse(rows .+ 1, cols .+ 1, vals, l, n)
+    if omega
+        @inbounds rows .+= one(Int32)
+        cols = repeat(1:n, inner=s)
+        return sparse(rows, cols, vals, l, n)
+    end
+    @inbounds rows .+= one(Int32)
+    return nothing
 end
+
+
 
 """
 SEQRCS(A,l,s,k,t)
@@ -70,19 +73,30 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     n = dim(Ris)
 
     # Generate sparse embedding
-    omega = sparse_sign_matrix(l,n,s)
+    vals = Array{Float64}(undef, n * s)
+    rows = Array{Int32}(undef, n * s)
+    sparse_sign_matrix(l,n,s, rows, vals)
 
     # Sketch the matrix and applying QR 
-    A_sk = sketched_matricization(A, mode , omega')
+    # A_sk = sketched_matricization(A, mode , omega)
+    A_sk = sketched_matricization(A, mode, l, rows, vals, s)
     
     _, _, p_sk = qr!(A_sk, ColumnNorm())  
-    p_sk=p_sk[1:t]
+    p_sk = Dict((@inbounds p_sk[1:t]) .=> 1)
     println("The size of A_sk is $(size(A_sk))")
-
-    ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
-    rows_sel = omega[p_sk,:]
-    omega = nothing;
-    indices = findall(col -> any(!=(0), col), eachcol(rows_sel))
+    
+    ## TODO working here. This can be threadwise parallelized which
+    ## Will help with the cost. 
+    indices = Vector{Int}()
+    for i in 1:n
+        @inbounds r = @view rows[(i-1) * s + 1: i * s]
+        for j in 1:s
+            if haskey(p_sk, (@inbounds r[j]))
+                push!(indices, i)
+                break
+            end
+        end
+    end
     indices_ind = Index(length(indices),"ind")
     indices_tensor = itensor(Int, indices, indices_ind)
     println("The size of A_subset is $(length(indices))")
@@ -103,7 +117,6 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
         R = hcat(R,Q'*A_rem)
     end
 
-    GC.gc()
     return Q,R,p
 
 end
