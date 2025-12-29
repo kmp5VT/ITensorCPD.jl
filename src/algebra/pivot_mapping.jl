@@ -108,11 +108,11 @@ function  sketched_matricization(T::ITensor, k::Int, l, rows, vals, s)
 
   stride = strides(T.tensor)[k]
   for j in 1:l
-    nzs = findall(x -> x==j, rows)
+    nzs = findall(x -> any(==(j), x), rows)
     pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, didx, stride),
                        nzs .÷ s + [i % s > 0 ? 1 : 0 for i in nzs])
-    m2 = @view vals[nzs]
-    As_slice[j] .= [dot((@view v[pos .+ stride* (i-1)]), m2) for i in 1:didx]
+    m2 = @inbounds @view vals[nzs]
+    As_slice[j] .= map(i -> dot((@inbounds @view v[pos .+ stride* (i-1)]), m2), 1:didx)
   end
   return As
 end
