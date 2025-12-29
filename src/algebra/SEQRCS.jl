@@ -75,11 +75,13 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     # Generate sparse embedding
     vals = Array{Float64}(undef, n * s)
     rows = Array{Int32}(undef, n * s)
-    sparse_sign_matrix(l,n,s, rows, vals)
+    omega = sparse_sign_matrix(l,n,s, rows, vals; omega=false)
 
     # Sketch the matrix and applying QR 
-    # A_sk = sketched_matricization(A, mode , omega)
-    A_sk = sketched_matricization(A, mode, l, rows, vals, s)
+    A_sk = isnothing(omega) ? 
+    sketched_matricization(A, mode, l, rows, vals, s) : 
+    sketched_matricization(A, mode , omega)
+    # A_sk = sketched_matricization(A, mode, l, rows, vals, s)
     
     _, _, p_sk = qr!(A_sk, ColumnNorm())  
     p_sk = Dict((@inbounds p_sk[1:t]) .=> 1)
