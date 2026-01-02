@@ -14,7 +14,12 @@ function ldiv_solve!(A, B; factorizeA = false)
     if factorizeA 
         szA = size(A)
         if (szA[1] == szA[2])
-            return cholesky(Hermitian(A), RowMaximum(), check=false, tol=cholesky_epsilon) \ B
+            try
+                return cholesky(Hermitian(A), RowMaximum(), check=true, tol=cholesky_epsilon) \ B
+            catch
+                println("Warning: Cholesky based solver failed.")
+                return qr(A, ColumnNorm()) \ B
+            end
         else
             return qr(A, ColumnNorm()) \ B
         end
