@@ -82,6 +82,7 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
     sketched_matricization(A, mode, l, rows, vals, s) : 
     sketched_matricization(A, mode , omega)
     # A_sk = sketched_matricization(A, mode, l, rows, vals, s)
+    println("The size of A_sk is $(size(A_sk))")
     
     _, _, p_sk = qr!(A_sk, ColumnNorm())  
     p_sk = Dict((@inbounds p_sk[1:t]) .=> 1)
