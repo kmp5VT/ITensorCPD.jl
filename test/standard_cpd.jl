@@ -64,6 +64,11 @@
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
+    int_opt_A =
+       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose, normal=false, shuffle_pivots=true, trunc_tol=0.001);
+    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
+         norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+
     alg = ITensorCPD.SEQRCSPivProjected(1, 800, (1,2,3),(100,100,100))
     als = ITensorCPD.compute_als(A, cp_A; alg, check);
     
@@ -119,6 +124,11 @@
     alg = ITensorCPD.LevScoreSampled(100)
     check = ITensorCPD.CPAngleCheck(1e-5, 10)
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
+    @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
+
+    alg = ITensorCPD.LevScoreSampled(100)
+    check = ITensorCPD.CPAngleCheck(1e-5, 10)
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose=true);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
     ### Test for Leverage score sampling CPD 
