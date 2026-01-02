@@ -35,7 +35,7 @@ abstract type MttkrpAlgorithm end
     end
 
     ## Default algorithm uses the pivoted QR to solve LS problem.
-    function solve_ls_problem(::MttkrpAlgorithm,krp, mtkrp, rank)
+    function solve_ls_problem(::MttkrpAlgorithm, _, krp, mtkrp, rank)
         ## potentially better to first inverse the grammian then contract
         ## qr(A, Val(true))
         #solution = array(dag(krp)) \ transpose(array(mtkrp))
@@ -232,10 +232,15 @@ abstract type ProjectionAlgorithm end
     end
 
     ## Default algorithm uses the pivoted QR to solve LS problem.
-    function solve_ls_problem(::ProjectionAlgorithm, projected_KRP, project_target, rank)
+    function solve_ls_problem(::ProjectionAlgorithm, als, projected_KRP, project_target, rank)
         # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
         #direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
-        direction = ldiv_solve!!(expose(array(projected_KRP)), expose(transpose(array(project_target)));factorizeA=true)
+        direction = nothing
+        if als.additional_items[:normal]
+            direction = ldiv_solve!!(expose(array(dag(projected_KRP * prime(dag(projected_KRP); tags=tags(rank))))), expose(transpose(array(project_target * prime(dag(projected_KRP); tags=tags(rank)))));factorizeA=true) 
+        else
+            direction = ldiv_solve!!(expose(array(projected_KRP)), expose(transpose(array(project_target)));factorizeA=true)
+        end
         i = ind(project_target, 1)
         return itensor(copy(transpose(direction)), i,rank)
     end
@@ -429,7 +434,8 @@ abstract type ProjectionAlgorithm end
             :projects_tensors => projectors,
             :target_transform => targets,
             :qr_factors => als.additional_items[:qr_factors],
-            :effective_ranks => als.additional_items[:effective_ranks]
+            :effective_ranks => als.additional_items[:effective_ranks],
+            :normal => als.additional_items[:normal],
             )
             return ALS(als.target, updated_alg, extra_args, als.check)
         end
@@ -491,7 +497,7 @@ abstract type ProjectionAlgorithm end
             return als.target
         end
 
-        function solve_ls_problem(::InvKRP, projected_KRP, projected_target, rank)
+        function solve_ls_problem(::InvKRP, _, projected_KRP, projected_target, rank)
             U, S, V = svd(dag(projected_KRP), rank; use_absolute_cutoff = true, cutoff = 0)
             return prime(projected_target; tags = tags(rank)) * V * (1 ./ S) * U
         end
