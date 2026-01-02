@@ -12,7 +12,12 @@ end
 ## For now just call with QR CP if factorize. Later this will be more complex.
 function ldiv_solve!(A, B; factorizeA = false)
     if factorizeA 
-        return qr(A, ColumnNorm()) \ B
+        szA = size(A)
+        if (szA[1] == szA[2])
+            return cholesky(Hermitian(A), RowMaximum(), check=false, tol=cholesky_epsilon) \ B
+        else
+            return qr(A, ColumnNorm()) \ B
+        end
     else
         return A \ B
     end
