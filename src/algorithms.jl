@@ -279,7 +279,7 @@ abstract type ProjectionAlgorithm end
 
         function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
             ## update the factor weights.
-            als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact))
+            @inbounds als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact))
         end
 
     ### With this solver we are going to compute sampling projectors for LS decomposition
@@ -454,9 +454,8 @@ abstract type ProjectionAlgorithm end
         function matricize_tensor(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
             ## This computes the projected MTTKRP
             # return als.additional_items[:target_transform][fact] *  ITensorCPD.pivot_hadamard(dag.(factors[1:end .!= fact]), rank, als.additional_items[:projects_tensors][fact])
-            return als.additional_items[:target_transform][fact]
+            return @inbounds als.additional_items[:target_transform][fact]
         end
-
 
         function post_solve(::PivotBasedSolvers, als, factors, λ, cp, rank::Index, fact::Integer) end
 
