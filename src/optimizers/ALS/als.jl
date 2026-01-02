@@ -156,8 +156,10 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    normal = false,
     kwargs...
 )
+    extra_args[:normal] = normal
     return ALS(target, alg, extra_args, check)
 end
 
@@ -169,6 +171,7 @@ function compute_als(
     check = nothing,
     shuffle_pivots = true,
     trunc_tol = 0.01,
+    normal = true,
     kwargs...
 )
     pivots = Vector{Vector{Int}}()
@@ -235,6 +238,7 @@ function compute_als(
     extra_args[:target_transform] = targets
     extra_args[:qr_factors] = qr_factors
     extra_args[:effective_ranks] = effective_ranks
+    extra_args[:normal] = normal
     
     return ALS(ITensor(inds(target)), alg, extra_args, check)
 end
@@ -247,6 +251,7 @@ function compute_als(
     check = nothing,
     shuffle_pivots = true,
     trunc_tol = 0.01,
+    normal = true,
     kwargs...
 )
     lst = random_modes(alg)
@@ -322,6 +327,7 @@ function compute_als(
     extra_args[:target_transform] = targets
     extra_args[:qr_factors] = qr_factors
     extra_args[:effective_ranks] = effective_ranks
+    extra_args[:normal] = normal
     
     return ALS(ITensor(inds(target)), alg, extra_args, check)
 end
@@ -364,6 +370,7 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    normal=false,
     kwargs...
 )
     ## For each factor matrix compute its weights
@@ -389,6 +396,7 @@ function compute_als(
         push!(projects_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
     end
     extra_args[:projects_tensors] = projects_tensors
+    extra_args[:normal] = normal
     return ALS(target, alg, extra_args, check)
 end
 
@@ -398,6 +406,7 @@ function compute_als(
     cp::CPD{<:ITensor};
     extra_args = Dict(),
     check = nothing,
+    normal=false,
     kwargs...
 )
     ## For each factor matrix compute its weights
@@ -429,5 +438,6 @@ function compute_als(
     ## in α form (rows of the matricized tensor) and the indices which are captured in the pivot.
     ## The order of indices are (indices which connect to the pivot, pivot_index).
     extra_args[:projects_tensors] = projects_tensors
+    extra_args[:normal] = normal
     return ALS(target, alg, extra_args, check)
 end

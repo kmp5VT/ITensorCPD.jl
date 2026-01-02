@@ -1,4 +1,6 @@
 module ITensorCPD
+  cholesky_epsilon = 1e-6
+
   include("math_tools/row_norm.jl")
   include("converge_checks/converge_checks.jl")
   include("algebra/had_contract.jl")
