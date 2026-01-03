@@ -140,24 +140,21 @@ function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true)
     ## TODO working here. This can be threadwise parallelized which
     ## Will help with the cost. 
     indices = Vector{Int}()
-    rowsMat = reshape(rows, (n, s))
-    p_sk = p_sk[1:t]
-    indices = collect(Iterators.flatten([findall(col -> any(==(p), col), eachrow(rowsMat)) for p in p_sk]))
-    # @show length(indices)
-    # ITensors.pause()
-
+    rowsMat = reshape(rows, (s, n))
+    pp = p_sk[1:t]
+    indices = collect(Iterators.flatten([findall(col -> any(==(p), col), eachcol(rowsMat)) for p in pp]))
+    # @show indices
     # indices = Vector{Int}()
     # p_sk = Dict((@inbounds p_sk[1:t]) .=> 1)
-    # for i in eachrow(rowsMat)
+    # for i in eachcol(rowsMat)
     #     for j in i
     #         if haskey(p_sk, j)
-    #             push!(indices, i.indices[1])
+    #             push!(indices, @inbounds i.indices[2])
     #             break
     #         end
     #     end
     # end
-    # @show length(indices)
-    # ITensors.pause()
+    
     indices_ind = Index(length(indices),"ind")
     indices_tensor = itensor(Int, indices, indices_ind)
     println("The size of A_subset is $(length(indices))")
