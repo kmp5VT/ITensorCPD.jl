@@ -141,8 +141,8 @@ function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true)
     ## Will help with the cost. 
     indices = Vector{Int}()
     rowsMat = reshape(rows, (s, n))
-    pp = p_sk[1:t]
-    indices = collect(Iterators.flatten(map(p->findall(col -> any(==(p), col), eachcol(rowsMat)), pp)))
+    p_sk = @inbounds p_sk[1:t]
+    indices = unique(collect(Iterators.flatten(map(p->findall(col -> any(==(p), col), eachcol(rowsMat)), p_sk))))
     # @show indices
     # indices = Vector{Int}()
     # p_sk = Dict((@inbounds p_sk[1:t]) .=> 1)
