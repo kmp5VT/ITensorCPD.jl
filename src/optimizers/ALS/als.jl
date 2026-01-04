@@ -285,7 +285,7 @@ function compute_als(
             k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
             l=Int(round(3 * m * log(m))) 
             s=Int(round(log(m)))
-            q,r,p = SEQRCS(target,n,i,l,s,k_sk)
+            q,r,p = SEQRCS(target,n,i,l,s,k_sk; compute_r = false, use_omega=false)
             # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
         else
             Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
