@@ -107,12 +107,20 @@ function  sketched_matricization(T::ITensor, k::Int, l, rows, vals, s)
   ## This is effectively the cols of omega transpose without having to construct omega.
 
   stride = strides(T.tensor)[k]
-  for j in 1:l
-    nzs = findall(x -> any(==(j), x), rows)
+  dict_rows = Dict{Int, Vector{Int}}()
+  ## Loop through the rows and sort the things based on values into
+  ## lists that will give the "nzs" lists. This way we only have to look through rows 1 time
+  ## Which is the most expensive compoenent.
+  for i in 1:l
+    dict_rows[i] = Vector{Int}()
+  end
+  map((i,j) -> push!(dict_rows[i], j), rows, range(1,length(rows)))
+  for (x, j) in zip(As_slice, 1:l)
+    nzs = @inbounds dict_rows[j]
     pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, didx, stride),
-                       nzs .÷ s + [i % s > 0 ? 1 : 0 for i in nzs])
+                       nzs .÷ s + map(i -> i % s > 0 ? 1 : 0, nzs))
     m2 = @inbounds @view vals[nzs]
-    As_slice[j] .= map(i -> dot((@inbounds @view v[pos .+ stride* (i-1)]), m2), 1:didx)
+    @inbounds x .= map(i -> dot((@inbounds @view v[pos .+ stride* (i-1)]), m2), 1:didx)
   end
   return As
-end
+end 
