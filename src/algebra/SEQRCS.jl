@@ -1,6 +1,7 @@
 using StatsBase
 using SparseArrays: sparse
 using LinearAlgebra
+using Base.Iterators
 
 
 """
@@ -25,11 +26,7 @@ end
 
 
 ##Wrapping the sparse_sign file into a julia function
-function sparse_sign_matrix(l::Int, n::Int, s::Int)
-
-    nnz=n*s
-    vals = Array{Float64}(undef, nnz)
-    rows = Array{Int32}(undef, nnz)          
+function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals; omega = false)
     colstarts = Array{Int32}(undef, n+1)
     ccall((
         :sparse_sign,
@@ -39,8 +36,13 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int)
         (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
         l, n, s, vals, rows, colstarts
     )
-    cols = repeat(0:n-1, inner=s)
-    return sparse(rows .+ 1, cols .+ 1, vals, l, n)
+    if omega
+        @inbounds rows .+= one(Int32)
+        cols = repeat(1:n, inner=s)
+        return sparse(rows, cols, vals, l, n)
+    end
+    @inbounds rows .+= one(Int32)
+    return nothing
 end
 
 """
@@ -64,20 +66,30 @@ SIAM Journal on Matrix Analysis and Applications, 45(4), 1782-1804, 2024
 }
 
 """
-function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
+function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r=true, use_omega::Bool=false)
+    return SEQRCS(Val(use_omega), A, mode, i, l, s, t; compute_r)
+end
 
+## This code uses the sparse arrays matrix to construct the SE-QRCS
+## This is the reference implementation
+function SEQRCS(::Val{true}, A::ITensor, mode::Int, i, l, s, t; compute_r=true)
     Ris = uniqueinds(A, i)         
     n = dim(Ris)
 
     # Generate sparse embedding
-    omega = sparse_sign_matrix(l,n,s)
+    omega = sparse_sign_matrix(l,n,s, Array{Int32}(undef, n * s), Array{Float64}(undef, n * s); omega=true)
 
     # Sketch the matrix and applying QR 
-    A_sk = sketched_matricization(A, mode , omega')
+    A_sk = sketched_matricization(A, mode , omega)
+    # A_sk = sketched_matricization(A, mode, l, rows, vals, s)
+    println("The size of A_sk is $(size(A_sk))")
     
     _, _, p_sk = qr!(A_sk, ColumnNorm())  
+    
+    ## TODO working here. This can be threadwise parallelized which
+    ## Will help with the cost. 
+    indices = Vector{Int}()
     p_sk=p_sk[1:t]
-    println("The size of A_sk is $(size(A_sk))")
 
     ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
     rows_sel = omega[p_sk,:]
@@ -103,7 +115,65 @@ function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r= true)
         R = hcat(R,Q'*A_rem)
     end
 
-    GC.gc()
     return Q,R,p
 
+end
+
+## This code does not use the sparse arrays sparse matrix. We made this because
+## We found that the sparse arrays matrix creates a lot of memory and can be slow for 
+## very large matrices.
+function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true)
+    Ris = uniqueinds(A, i)         
+    n = dim(Ris)
+
+    # Generate sparse embedding
+    vals = Array{Float64}(undef, n * s)
+    rows = Array{Int32}(undef, n * s)
+    sparse_sign_matrix(l,n,s, rows, vals; omega=false)
+
+    # Sketch the matrix and applying QR 
+    A_sk = sketched_matricization(A, mode, l, rows, vals, s) 
+    println("The size of A_sk is $(size(A_sk))")
+    
+    _, _, p_sk = qr!(A_sk, ColumnNorm())  
+    
+    ## TODO working here. This can be threadwise parallelized which
+    ## Will help with the cost. 
+    indices = Vector{Int}()
+    rowsMat = reshape(rows, (s, n))
+    p_sk = @inbounds p_sk[1:t]
+    indices = unique(collect(Iterators.flatten(map(p->findall(col -> any(==(p), col), eachcol(rowsMat)), p_sk))))
+    # @show indices
+    # indices = Vector{Int}()
+    # p_sk = Dict((@inbounds p_sk[1:t]) .=> 1)
+    # for i in eachcol(rowsMat)
+    #     for j in i
+    #         if haskey(p_sk, j)
+    #             push!(indices, @inbounds i.indices[2])
+    #             break
+    #         end
+    #     end
+    # end
+    
+    indices_ind = Index(length(indices),"ind")
+    indices_tensor = itensor(Int, indices, indices_ind)
+    println("The size of A_subset is $(length(indices))")
+
+    ## Perform QR on A_subset to get final 'k' pivots
+    Q, R, p_subset = qr!(array(fused_flatten_sample(A, mode, indices_tensor)), ColumnNorm()) 
+    rem_indices = setdiff(1:n,indices)
+    p = vcat(indices[p_subset],rem_indices)
+
+    ## Form  A_rem to get the factor 'R' 
+    ## We can remove this part no need to get Q and R
+    ## but keeping it just to make sure that the function is performing well
+    if compute_r
+        rem_indices_ind = Index(length(rem_indices),"rem_ind")
+        rem_indices_tensor = itensor(rem_indices, rem_indices_ind)
+        A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
+        A_rem = matrix(A_rem)
+        R = hcat(R,Q'*A_rem)
+    end
+
+    return Q,R,p
 end

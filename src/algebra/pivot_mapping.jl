@@ -76,15 +76,51 @@ end
 
 function  sketched_matricization(T::ITensor, k::Int, omega)
   v = vec(NDTensors.data(T))
-  l = size(omega,2)
+  l = size(omega,1)
   idx = ind(T, k)
   As = similar(NDTensors.similartype(NDTensors.data(T), (1,2)), dim(idx), l)
   As_slice = eachcol(As)
-  Om_slice = eachcol(omega)
   stride = strides(T.tensor)[k]
   for j in 1:l
-    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), findall(!iszero,@view Om_slice[j]))
-    As_slice[j] .= [sum(@view v[pos .+ stride* (i-1)]) for i in 1:dim(idx)]
+    m = omega[j,:];
+    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), m.nzind)
+    ## Shouldn't we multiply by + or - 1 based on the sign of omega here?
+    As_slice[j] .= [sum((@view v[pos .+ stride* (i-1)]) .* m.nzval) for i in 1:dim(idx)]
   end
   return As
 end
+
+## For each column in omega there are s nonzero values 
+## We give this a lost on nonzero row values in omega ordered from [1,1,1,...1, 2,2,2...,2, ..., col,col,col,...]
+## Where the number of nonzeros in col_i = s.
+## What we do is find the position of each nonzero in the row order (divide by s) and then look up in vals what the value 
+## of said nonzero is.
+function  sketched_matricization(T::ITensor, k::Int, l, rows, vals, s)
+  v = NDTensors.data(T)
+  
+  idx = ind(T, k)
+  didx = dim(idx)
+
+  As = similar(NDTensors.similartype(NDTensors.data(T), (1,2)), didx, l)
+  As_slice = eachcol(As)
+  
+  ## This is effectively the cols of omega transpose without having to construct omega.
+
+  stride = strides(T.tensor)[k]
+  dict_rows = Dict{Int, Vector{Int}}()
+  ## Loop through the rows and sort the things based on values into
+  ## lists that will give the "nzs" lists. This way we only have to look through rows 1 time
+  ## Which is the most expensive compoenent.
+  for i in 1:l
+    dict_rows[i] = Vector{Int}()
+  end
+  map((i,j) -> push!(dict_rows[i], j), rows, range(1,length(rows)))
+  for (x, j) in zip(As_slice, 1:l)
+    nzs = @inbounds dict_rows[j]
+    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, didx, stride),
+                       nzs .÷ s + map(i -> i % s > 0 ? 1 : 0, nzs))
+    m2 = @inbounds @view vals[nzs]
+    @inbounds x .= map(i -> dot((@inbounds @view v[pos .+ stride* (i-1)]), m2), 1:didx)
+  end
+  return As
+end 
