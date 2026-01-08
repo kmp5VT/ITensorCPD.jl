@@ -1,5 +1,6 @@
 module ITensorCPD
   cholesky_epsilon = 1e-6
+  check_angle = false
 
   include("math_tools/row_norm.jl")
   include("converge_checks/converge_checks.jl")

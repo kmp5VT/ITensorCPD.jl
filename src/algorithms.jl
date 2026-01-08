@@ -205,6 +205,13 @@ abstract type ProjectionAlgorithm end
 
         # save_mttkrp(converge, mtkrp)
         cprank = ind(λ, 1)
+        ## This is a angle check function for testing. check_angle can be changed in ITensorCPD
+        if check_angle
+            appx = ITensorCPD.reconstruct(factors, λ);
+            dist = round(dot(als.target, appx) / (norm(als.target) * norm(appx)),digits=5)
+            angle = acos(dist)
+            println("Angle is : $(angle)")
+        end
         if als.check isa FitCheck
             if als.check.iter == 0
                 println("Warning: FitCheck is not enabled for $(als.mttkrp_alg) will run $(als.check.max_counter) iterations.")
