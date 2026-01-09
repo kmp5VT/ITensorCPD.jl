@@ -3,7 +3,7 @@
 ## [in] als An ALS object that contains the algorithm which will be used to form the normal equations
 ## [in] verbose a boolean that determines if the algorithm should print optimization information.
 ## [out] A CPD object with optmiized ALS factors
-function optimize(cp::CPD, als::ALS; verbose = true)
+function optimize(cp::CPD, als::ALS; verbose = false)
     rank = cp_rank(cp)
     iter = 0
 
