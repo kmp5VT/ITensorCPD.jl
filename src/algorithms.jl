@@ -366,7 +366,7 @@ abstract type ProjectionAlgorithm end
         
         function SEQRCSPivProjected(n, m, rrmodes=nothing, rank_vect=nothing) 
             rrmodes = isnothing(rrmodes) ? nothing : Tuple(rrmodes)
-            rank_vect = isnothing(rank_vect) ? nothing : Dict(rrmodes .=> Tuple(rank_vect))
+            rank_vect = isnothing(rank_vect) ? nothing : rank_vect isa Dict ? rank_vect : Dict(rrmodes .=> Tuple(rank_vect))
             new(n, m, rrmodes, rank_vect)
         end
     end
