@@ -16,7 +16,7 @@ julia> Pkg.develop(url="https://github.com/kmp5VT/ITensorCPD.jl")
 julia> using ITensorCPD
 ```
 
-Here is a quick example to decompose a random tensor 
+Here is a quick example to decompose a tensor 
 ```julia
 # Load ITensor and ITensorCPD
 julia> using ITensorCPD, ITensors
@@ -25,33 +25,87 @@ julia> using ITensorCPD, ITensors
 julia> i,j,k = Index.((10,10,10))
 julia> T = randomITensor(Float64, i,j,k)
 
-# Ask ITensorCPD to decompose the tensor to rank 50
-julia> cpd = ITensorCPD.decompose(T, 50);
+# Call decompose to CPD the tensor to rank 50 with default options
+julia> cpd = ITensorCPD.decompose(T, 50)
+```
+Currently the default options are to use the standard normal-equation based ALS algorithm and run 100 ALS iterations.
+All these options can be fine-tuned.
 
-# Reconstruct the CPD from it's computed factor matrices and check the fit of the decomposition.
-julia> diff = ITensorCPD.reconstruct(cpd) - T
-julia> println("The Accuracy in the rank 50 CPD is: $(1.0 - norm(diff) / norm(T))")
-The Accuracy in the rank 50 CPD is: 0.9999960710854621
+If you have data which is represented as an N dimensional array, ITensorCPD can also decompose this directly
+```julia
+# Make a random order 3 array
+julia> A = randn(10, 10, 10)
+
+## Directly decompose this
+julia> cpd = ITensorCPD.decompose(A, 50)
+```
+Note that the return type is a ITensorCPD.CPD object and factor matrices will be written into ITensor objects.
+The factor matrices can be indexed in the CPD object using the `[]` operator
+```julia
+# Grab the first factor of cpd
+julia> Fact1 = cpd[1]
+
+# The scaling factor is indexed by
+julia> λ = cpd[]
+```
+One can also easily reconstruct the CPD into a tensor using the reconstruct function
+```julia
+# Reconstruct approximation of A. A will be returned in an itensor type.
+julia> Acp_itensor = ITensorCPD.reconstruct(A)
+
+# To convert back into an array call array function
+julia> Acp_array = array(Acp_itensor)
 ```
 
-There are currently two convergence criteria implemented. The first does no check and simply runs a certain number of iterations.
-And the second looks at the change in the L2 fit of the tensor decomposition. An example using this fit based criteria is
+One can modify the initial guess of the decomposition by either passing a random number generator into decompose
 ```julia
-# Construct an ITensorCPD convergence check object using the L2 fit.
+# Make a random number generator
+julia> using Random
+julia> rng = RandomDevice()
+julia> cpd = ITensorCPD.decompose(A, 50; rng)
+```
+Alternatively, one can manually construct a CPD type using the `random_CPD` function
+```julia
+# Make a random CPD of rank 50. Random guess generator also accepts a random number generators.
+julia> init_guess = ITensorCPD.random_CPD(A, 50; rng)
+```
+The CPD type can be passed along to the decomposition through `optimize` functions.
+```julia
+# Optimize the CPD initial guess using the ALS
+julia> cpd = ITensorCPD.als_optimize(A, init_guess)
+```
+
+ITensorCPD supports decomposition of tensors on both CPU and GPU. To decompose a tensor on GPU, simply move the tensor to the GPU
+device and call decompose.
+```julia
+# Convert A to a MtlArray
+julia> using Metal
+julia> Ametal = mtl(A)
+julia> cpd_metal = ITensorCPD.decompose(A, 50);
+```
+Though the decompositions are available on GPU, acceleration is currently not guarenteed and depends on problem size and GPU device.
+GPU support is handled by the backedn ITensors.jl library.
+
+There are also a number of convergence criteria. Convergence criteria can be used to efficiently oversee the accuracy of a CPD
+and stop a decomposition.
+The most popular stopping criteria for the CPD is one which considers the absolute change in the CPD fit, where the fit is measured as
+`1 - || T - T_{CP} || / ||T||`. These different stopping criteria can be provided to the decomposition using the keyword `check`
+```julia
+# Construct an ITensorCPD convergence check object using the change in the CPD fit.
 # This takes the ALS stopping condition epsilon, the number of allowed iterations and 
 # the norm of the reference tensor
 julia> check = ITensorCPD.FitCheck(1e-3, 100, norm(T))
 
 # One can pass CPD objects into ITensorCPD by calling the `als_optimize`
 # function which optimized the given CPD using a standard alternating least squares algorithm.
-julia> cpd = ITensorCPD.als_optimize(T, cpd; check, verbose=true);
+julia> cpd = ITensorCPD.decompose(T, 50; check, verbose=true);
 50       1       0.9999946084173382      0.9999946084173382
 50       2       0.9999950065419643      3.981246260442717e-7
 50       3       0.9999953749621856      3.684202213305454e-7
 
-# We can also construct a new CPD and pass this into `als_optimize`
-julia> cpd_random = ITensorCPD.random_CPD(T, 50);
-julia> ITensorCPD.als_optimize(T, cpd_random; check, verbose=true);
+# We can also pass check to the als_optimize function
+julia> init_guess = ITensorCPD.random_CPD(T, 50);
+julia> ITensorCPD.als_optimize(T, init_guess; check, verbose=true);
 50       1       0.6382083068797204      0.6382083068797204
 50       2       0.8136191816721784      0.17541087479245798
 50       3       0.8716713681765458      0.05805218650436739
@@ -75,3 +129,37 @@ julia> ITensorCPD.als_optimize(T, cpd_random; check, verbose=true);
 50       21      0.9902278617267223      0.000985830945997579
 50       22      0.9911139759293625      0.0008861142026401758
 ```
+
+Currently the library only supports the ALS optimization of tensors and tensor networks. In the future we plan to introduce other optimization strategies which will be named as `xxx_optimize`.
+However, the library does support a variety of ALS strategies. The ALS strategy can be modified using the keyword `alg`.
+At the moment the names for these algorithms are under development so please note that they may change in the future to improve the codes readability.
+The most popular ALS algorithm is via the normal equation. This optimizes factors by updating each factor using the gradient of the following loss function `f = 1/2 || T - Tcp ||^2`.
+In the library, there are two algorithms to compute the normal equation `KRP` and `direct`. `KRP` computes the full Khatri-Rao product (KRP) in the construction of the normal equation and `direct` uses tensor products to avoid forming the KRP.
+```julia
+# Form an algorithm
+julia> alg = ITensorCPD.KRP()
+julia> cpd = ITensorCPD.decompose(T, 50; alg);
+## Decomposes the 99% accuracy in 23.991 ms 
+
+# Change the algorithm to direct
+julia> alg = ITensorCPD.direct() 
+julia> cpd = ITensorCPD.decompose(T, 50; alg);
+## Decomposes the 99% accuracy in 34.609 ms
+```
+Note that some algorithms may require inputs in the constructor. We are working on documentation for these algorithm objects.
+For example, the leverage score based randomized CP-ALS algorithm introduced by [Battaglino et al](https://arxiv.org/abs/1701.06600) can be used via the `LevScoreSampled` algorithm.
+```julia
+# Use a random sampled CPD algorithm with 500 samples per mode
+julia> alg = ITensorCPD.LevScoreSampled(500)
+julia> cpd = ITensorCPD.decompose(T, 50; alg);
+```
+
+This library also supports:
+1. CPD x ITensor contractions,
+2. CPD x CPD contractions and,
+3. CPD x ITensorNetworks contractions.
+   
+We are currently working on improving the API for these contractions.
+
+The library is flexible and is it possible to implement custom ALS algorithms, convergence checking algorithms and optimizers which can be picked up seemlessly via Julia's multiple dispatch system.
+Please refer to library API for references on custom algorithms and please feel free to contribute to the library.
