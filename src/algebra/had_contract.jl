@@ -162,9 +162,9 @@ function had_contract(
     slices = [eachslice(array(x); dims = positions_of_had[x]) for x in tensors[had_tensors]]
     slices_inds = [inds(x)[1:end .!= positions_of_had[x]] for x in tensors[had_tensors]]
 
-    slice_0 = ITensorNetwork(vcat(
+    slice_0 = vcat(
         [itensor(slices[x][1], slices_inds[x]) for x = 1:length(had_tensors)],
-        tensors[no_had])
+        tensors[no_had]
     )
 
     sequence =
@@ -178,12 +178,12 @@ function had_contract(
     slices_c[1] .= array(cslice)
 
     for i = 2:dim(had)
-        slice = ITensorNetwork(
+        slice = 
             vcat([itensor(slices[x][i], slices_inds[x]) for x = 1:length(had_tensors)],
-            tensors[no_had]))
+            tensors[no_had])
 
         slices_c[i] .= array(
-            α .* contract(slice;
+            contract(slice;
                 sequence,
             ),
         )
@@ -213,10 +213,9 @@ function optimal_had_contraction_sequence(network::ITensorNetwork, had::Index; a
     slices = [eachslice(array(x); dims = positions_of_had[x]) for x in tensors[had_tensors]]
     slices_inds = [inds(x)[1:end .!= positions_of_had[x]] for x in tensors[had_tensors]]
 
-    slice_0 = ITensorNetwork(vcat(
+    slice_0 = vcat(
         [itensor(slices[x][1], slices_inds[x]) for x = 1:length(had_tensors)],
         tensors[no_had])
-    )
 
     return ITensorNetworks.contraction_sequence(slice_0; alg)
 end

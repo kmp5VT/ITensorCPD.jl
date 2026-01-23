@@ -132,6 +132,7 @@ abstract type MttkrpAlgorithm end
             target_index = ind(cp, fact)
             target_vert = als.additional_items[:ext_ind_to_vertex][target_index]
             p = copy(als.target[target_vert])
+            ## This contracts all the indices not of interest on the target vertice
             for x in uniqueinds(als.target, target_vert)
                 if x == target_index
                     continue
