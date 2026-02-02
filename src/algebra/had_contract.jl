@@ -40,6 +40,27 @@ function had_contract(A::ITensor, B::ITensor, had::Index; α = true)
     return C
 end
 
+## This is a specialized tensor product which combines the hadamard product with other tensor
+## operations. Here we assume A and B both have a matching modes `had` and this mode will 
+## be preserved in tensor result. This version is the multi index version of had_contract and will
+## permute the tensors to fuse the haddamard modes then call the function above on one mode
+using ITensors.NDTensors: data
+# TODO add safegaurds on this contraction.
+function had_contract(A::ITensor, B::ITensor, had...)
+    otherindsA = noncommoninds(A, had)
+    otherindsB = noncommoninds(B, had)
+    combohad = Index(dim(had), "FusedHad")
+    ## Permute and fuse the indices in had...
+    Apermfused =  itensor(array(A, (otherindsA..., had...)), otherindsA, combohad)
+    Bpermfused = itensor(array(B, (otherindsB..., had...)), otherindsB, combohad)
+    result = had_contract(
+       Apermfused, 
+       Bpermfused,
+        combohad)
+    finalinds = inds(result)[1:end-1]
+    return itensor(data(result), finalinds, had)
+end
+
 ## TODO this is broken when some items have a rank but others do not.
 ## This is a specialized tensor product which combines the hadamard product with other tensor
 ## operations like the definition before. In this we contract a collection of tensors 
