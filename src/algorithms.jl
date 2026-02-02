@@ -142,10 +142,10 @@ abstract type MttkrpAlgorithm end
             end
 
             ## Next I need to figure out which partial hadamard_product to skip
-            env_list = ITensorNetwork([
+            env_list =[
                 p,
                 (als.additional_items[:partial_mtkrp])[1:end .!= als.additional_items[:factor_to_part_cont][fact]]...,
-            ])
+            ]
             
             sequence = als.additional_items[:mttkrp_contract_sequences][fact]
             sequence =
