@@ -383,8 +383,35 @@ abstract type ProjectionAlgorithm end
         copy_alg(alg::SEQRCSPivProjected, new_start = 0, new_end = 0) = 
         SEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
 
+    ## This is is a new idea for a solver where we first run the SEQRCS method on a single flattening
+    ## This creates a sketch of the tensor T along the KRP modes. Then I am going to contract (ΩT)ᵀT.
+    ## For now this scales as N^(d-1) * S where S is the dimension of the sampling.
+    ## We then compute the SE-QRCS on this to find the pivots to get the QR pivots
+    struct TwoSideSEQRCSPivProjected <: ProjectionAlgorithm
+        Start::Union{<:Tuple, <:Int}
+        End::Union{<:Tuple, <:Int}
+        random_modes
+        rank_vect
+        
+        function TwoSideSEQRCSPivProjected(n, m, rrmodes=nothing, rank_vect=nothing) 
+            rrmodes = isnothing(rrmodes) ? nothing : Tuple(rrmodes)
+            rank_vect = isnothing(rank_vect) ? nothing : rank_vect isa Dict ? rank_vect : Dict(rrmodes .=> Tuple(rank_vect))
+            new(n, m, rrmodes, rank_vect)
+        end
+    end
+        ## TODO modify to use ranges 
+        TwoSideSEQRCSPivProjected() = TwoSideSEQRCSPivProjected(1, 0, nothing, nothing)
+        TwoSideSEQRCSPivProjected(n::Int) = TwoSideSEQRCSPivProjected(1, n, nothing, nothing)
+        TwoSideSEQRCSPivProjected(n::Tuple) = TwoSideSEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
+
+        random_modes(alg::TwoSideSEQRCSPivProjected) = alg.random_modes
+        rank_vect(alg::TwoSideSEQRCSPivProjected) = alg.rank_vect
+
+        copy_alg(alg::TwoSideSEQRCSPivProjected, new_start = 0, new_end = 0) = 
+        TwoSideSEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
+
     ## This is a union class so that the operations work on both pivot based solver algorithms
-    const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected}
+    const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected,TwoSideSEQRCSPivProjected}
 
         start(alg::PivotBasedSolvers) = alg.Start
         stop(alg::PivotBasedSolvers) = alg.End
