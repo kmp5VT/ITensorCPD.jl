@@ -11,10 +11,11 @@ mutable struct FitCheck <: ConvergeAlg
     MttKRP::ITensor
     lastfit::Number
     final_fit::Number
+    total_iter::Int
 
     function FitCheck(tol, max, norm)
         elt = real(typeof(norm))
-         new(zero(elt), zero(elt), tol, max, norm, ITensor(), one(elt), zero(elt))
+         new(zero(elt), zero(elt), tol, max, norm, ITensor(), one(elt), zero(elt), zero(elt))
     end
 end
 
@@ -42,6 +43,7 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     if Δfit < check.tolerance
         check.counter += 1
         if check.counter >= 2
+            check.total_iter= check.iter
             check.iter = 0
             check.counter = 0
             check.final_fit = check.lastfit
@@ -53,6 +55,7 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
     end
 
     if check.iter == check.max_counter
+        check.total_iter= check.iter
         check.iter = 0
         check.counter = 0
         check.final_fit = check.lastfit

@@ -46,3 +46,78 @@ end
   @test 1 - norm(cpdB[] * had_contract([Acore, res[3].factors...], ITensorCPD.cp_rank(cpdB)) - (A * B)) ≈ 1
 end
 
+@testset "Multi-index had_contract" begin
+  i,j,k,l,m = Index.((10,9,8,7,3))
+  ## One mode contract mat * vec
+  A = random_itensor(i,j,k)
+  B = random_itensor(j,i,l,k)
+
+  Chad = ITensorCPD.had_contract(A, B, j,k)
+  C = zeros(Float64, dim(l),dim(j),dim(k))
+  for jj in 1:dim(j)
+    for kk in 1:dim(k)
+      for ll in 1:dim(l)
+        for ii in 1:dim(i)
+          C[ll,jj,kk] += array(A)[ii,jj,kk] * array(B)[jj,ii,ll,kk]
+        end
+      end
+    end
+  end
+
+  @test array(Chad, l,j,k) ≈ C
+
+  ## One mode contract mat * mat
+   A = random_itensor(i,m,j,k)
+  B = random_itensor(j,i,l,k)
+
+  Chad = ITensorCPD.had_contract(A, B, j,k)
+  C = zeros(Float64, dim(l), dim(m),dim(j),dim(k))
+  for jj in 1:dim(j)
+    for kk in 1:dim(k)
+      for ll in 1:dim(l)
+        for mm in 1:dim(m)
+          for ii in 1:dim(i)
+            C[ll,mm,jj,kk] += array(A)[ii,mm,jj,kk] * array(B)[jj,ii,ll,kk]
+          end
+        end
+      end
+    end
+  end
+
+  @test array(Chad, l,m,j,k) ≈ C
+
+   A = random_itensor(i,j,k)
+  B = random_itensor(j,l,k)
+
+  ## Outer product
+  Chad = ITensorCPD.had_contract(A, B, j,k)
+  C = zeros(Float64, dim(i), dim(l),dim(j),dim(k))
+  for jj in 1:dim(j)
+    for kk in 1:dim(k)
+      for ll in 1:dim(l)
+        for ii in 1:dim(i)
+          C[ii,ll,jj,kk] = array(A)[ii,jj,kk] * array(B)[jj,ll,kk]
+        end
+      end
+    end
+  end
+
+  @test array(Chad, i,l,j,k) ≈ C
+
+  A = random_itensor(i,j,k)
+  B = random_itensor(j,i,k)
+
+  ## Inner product
+  Chad = ITensorCPD.had_contract(A, B, j,k)
+  @show Chad
+  C = zeros(Float64, dim(j),dim(k))
+  for jj in 1:dim(j)
+    for kk in 1:dim(k)
+      for ii in 1:dim(i)
+        C[jj,kk] += array(A)[ii,jj,kk] * array(B)[jj,ii,kk]
+      end
+    end
+  end
+
+  @test array(Chad, j,k) ≈ C
+end

@@ -12,8 +12,9 @@ mutable struct CPDiffCheck <: ConvergeAlg
     PrevCP
     lastfit::Number
     final_fit::Number
+    total_iter::Int
 
-    CPDiffCheck(tol, max) = new(0, 0, tol, max, 0.0, nothing, 1, 0)
+    CPDiffCheck(tol, max) = new(0, 0, tol, max, 0.0, nothing, 1, 0, 0)
 end
 
 function check_converge(check::CPDiffCheck, factors, λ, partial_gram; verbose = true)
@@ -45,6 +46,7 @@ function check_converge(check::CPDiffCheck, factors, λ, partial_gram; verbose =
     if Δfit < check.tolerance
         check.counter += 1
         if check.counter >= 2
+            check.total_iter = check.iter
             check.iter = 0
             check.counter = 0
             check.final_fit = check.lastfit
@@ -57,6 +59,7 @@ function check_converge(check::CPDiffCheck, factors, λ, partial_gram; verbose =
     end
 
     if check.iter == check.max_counter
+        check.total_iter = check.iter
         check.iter = 0
         check.counter = 0
         check.final_fit = check.lastfit
