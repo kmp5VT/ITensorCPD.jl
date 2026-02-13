@@ -444,6 +444,7 @@ abstract type ProjectionAlgorithm end
             :qr_factors => als.additional_items[:qr_factors],
             :effective_ranks => als.additional_items[:effective_ranks],
             :normal => als.additional_items[:normal],
+            :permute_symm_inds => als.additional_items[:permute_symm_inds],
             )
             return ALS(als.target, updated_alg, extra_args, als.check)
         end
