@@ -28,25 +28,7 @@ end
 ##Wrapping the sparse_sign file into a julia function
 function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals; omega = false, injective = false)
     colstarts = Array{Int32}(undef, n+1)
-    if injective
-        ccall((
-            :sparsestack,
-            libsparse
-            ),
-            Cvoid,
-            (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
-            l, n, s, vals, rows, colstarts
-        )
-    else
-        ccall((
-            :sparse_sign,
-            libsparse
-            ),
-            Cvoid,
-            (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
-            l, n, s, vals, rows, colstarts
-        )
-    end
+    sparse_sign_call(Val(injective), l, n, s, vals, rows, colstarts)
     if omega
         @inbounds rows .+= one(Int32)
         cols = repeat(1:n, inner=s)
@@ -54,6 +36,27 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals; omega = false, i
     end
     @inbounds rows .+= one(Int32)
     return nothing
+end
+
+function sparse_sign_call(::Val{true}, l, n, s, vals, rows, colstarts)
+    ccall((
+            :sparsestack,
+            libsparse
+            ),
+            Cvoid,
+            (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
+            l, n, s, vals, rows, colstarts
+        )
+end
+function sparse_sign_call(::Val{false}, l, n, s, vals, rows, colstarts)
+    ccall((
+            :sparse_sign,
+            libsparse
+            ),
+            Cvoid,
+            (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
+            l, n, s, vals, rows, colstarts
+        )
 end
 
 """
