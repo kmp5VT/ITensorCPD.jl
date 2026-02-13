@@ -1,4 +1,7 @@
-file_path = joinpath(@__DIR__,"..","src","algebra","sparse_sign.c")
+file_path = [
+    joinpath(@__DIR__,"..","src","algebra","sparse_sign.c"),
+    joinpath(@__DIR__,"..","src","algebra","sparsestack.c")
+]
 
 lib_path = joinpath(@__DIR__,"..","src","algebra")
 lib_name ="libsparse_sign"
