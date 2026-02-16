@@ -252,6 +252,7 @@ function compute_als(
     shuffle_pivots = true,
     trunc_tol = 0.01,
     normal = true,
+    injective = false,
     kwargs...
 )
     lst = random_modes(alg)
@@ -283,9 +284,10 @@ function compute_als(
         if n in lst
             ## TODO there is still a bug in this line below
             k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
-            l=Int(round(3 * m * log(m))) 
+            l=Int(round(3 * m * log(m)))
+            # l=Int(round(3 * m )) 
             s=Int(round(log(m)))
-            q,r,p = SEQRCS(target,n,i,l,s,k_sk; compute_r = false, use_omega=false,injective = false)
+            q,r,p = SEQRCS(target,n,i,l,s,k_sk; compute_r = false, use_omega=false,injective = injective)
             # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
         else
             Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
