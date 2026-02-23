@@ -19,10 +19,11 @@ function decompose(
     check = nothing,
     maxiter = nothing,
     verbose = false,
+    KWARGS...
 )
     CP = random_CPD(A, rank_ind; rng)
     if isnothing(solver)
-        return als_optimize(A, CP; alg, check, maxiter, verbose)
+        return als_optimize(A, CP; alg, check, maxiter, verbose, KWARGS...)
     else
         throw("OptimizerError")
     end
@@ -39,6 +40,7 @@ function decompose(
     verbose=false,
     start_rank = 1,
     rank_step = 1,
+    KWARGS...
 )
     if verbose
         println("Starting with rank: $(start_rank)")
@@ -47,7 +49,7 @@ function decompose(
     cpd = random_CPD(A, start_rank; rng)
     check = isnothing(check) ? FitCheck(1e-3, 100, norm(A)) : check
     while true
-        cpd = als_optimize(A, cpd; alg, check, maxiter, verbose);
+        cpd = als_optimize(A, cpd; alg, check, maxiter, verbose, KWARGS...);
         if 1.0 - ITensorCPD.CPDFit(check) < epsilon
             return cpd
         else
