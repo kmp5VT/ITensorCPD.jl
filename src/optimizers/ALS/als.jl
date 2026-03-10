@@ -41,10 +41,13 @@ function compute_als(
     extra_args = Dict();
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
     mttkrp_contract_sequences = Vector{Union{Any,Nothing}}()
+    permute_symm_inds = haskey(kwargs, :permute_symm_inds) ? kwargs[:permute_symm_inds] : [1:length(inds(target))...]
+    @assert length(permute_symm_inds) == length(inds(target))
     for l in inds(target)
         push!(mttkrp_contract_sequences, nothing)
     end
     extra_args[:mttkrp_contract_sequences] = mttkrp_contract_sequences
+    extra_args[:permute_symm_inds] = permute_symm_inds
     cprank = cp_rank(cp)
     return compute_als(alg, target, cp; extra_args, check, kwargs...)
 end
@@ -131,6 +134,8 @@ function compute_als(
     for _ in inds(cp)
         push!(mttkrp_contract_sequences, nothing)
     end
+    permute_symm_inds = haskey(kwargs, :permute_symm_inds) ? kwargs[:permute_symm_inds] : [1:length(inds(target))...]
+    @assert length(permute_symm_inds) == length(inds(cp))
 
     als = ALS(
         target,
@@ -142,6 +147,7 @@ function compute_als(
             :ext_ind_to_factor => extern_ind_to_factor,
             :factor_to_part_cont => factor_number_to_partial_cont_number,
             :mttkrp_contract_sequences => mttkrp_contract_sequences,
+            :permute_symm_inds => permute_symm_inds
         ),
         check,
     )

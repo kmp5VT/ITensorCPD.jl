@@ -14,7 +14,18 @@ function optimize(cp::CPD, als::ALS; verbose = false)
     converge = als.check
     while iter < converge.max_counter
         mtkrp = nothing
-        for (fact, target_ind) in zip(1:num_factors, inds(cp))
+        for (fact, target_ind, perm_ind) in zip(1:num_factors, inds(cp), als.additional_items[:permute_symm_inds])
+            if perm_ind < fact
+                if als.check isa FitCheck && fact == num_factors
+                    mtkrp = matricize_tensor(als.mttkrp_alg, als, factors, cp, rank, fact)
+                end
+                array(factors[fact]) .= array(factors[perm_ind])
+                post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
+                continue
+            elseif perm_ind > fact
+                throw("Error permute_symm_inds requires backward symmetry only (i.e. swap $(fact) and $(perm_ind) in your symmetry list).")
+            end
+
             ## compute the matrized tensor time khatri rao product with a provided algorithm.
             krp = compute_krp(als.mttkrp_alg, als, factors, cp, rank, fact)
 
