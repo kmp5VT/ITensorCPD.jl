@@ -26,16 +26,9 @@ end
 
 
 ##Wrapping the sparse_sign file into a julia function
-function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals; omega = false)
+function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals; omega = false, injective = false)
     colstarts = Array{Int32}(undef, n+1)
-    ccall((
-        :sparse_sign,
-        libsparse
-        ),
-        Cvoid,
-        (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
-        l, n, s, vals, rows, colstarts
-    )
+    sparse_sign_call(Val(injective), l, n, s, vals, rows, colstarts)
     if omega
         @inbounds rows .+= one(Int32)
         cols = repeat(1:n, inner=s)
@@ -43,6 +36,27 @@ function sparse_sign_matrix(l::Int, n::Int, s::Int, rows, vals; omega = false)
     end
     @inbounds rows .+= one(Int32)
     return nothing
+end
+
+function sparse_sign_call(::Val{true}, l, n, s, vals, rows, colstarts)
+    ccall((
+            :sparsestack,
+            libsparse
+            ),
+            Cvoid,
+            (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
+            l, n, s, vals, rows, colstarts
+        )
+end
+function sparse_sign_call(::Val{false}, l, n, s, vals, rows, colstarts)
+    ccall((
+            :sparse_sign,
+            libsparse
+            ),
+            Cvoid,
+            (Cint, Cint, Cint, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}),
+            l, n, s, vals, rows, colstarts
+        )
 end
 
 """
@@ -66,18 +80,18 @@ SIAM Journal on Matrix Analysis and Applications, 45(4), 1782-1804, 2024
 }
 
 """
-function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r=true, use_omega::Bool=false)
-    return SEQRCS(Val(use_omega), A, mode, i, l, s, t; compute_r)
+function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r=true, use_omega::Bool=false,injective =false)
+    return SEQRCS(Val(use_omega), A, mode, i, l, s, t; compute_r,injective)
 end
 
 ## This code uses the sparse arrays matrix to construct the SE-QRCS
 ## This is the reference implementation
-function SEQRCS(::Val{true}, A::ITensor, mode::Int, i, l, s, t; compute_r=true)
+function SEQRCS(::Val{true}, A::ITensor, mode::Int, i, l, s, t; compute_r=true, injective = false)
     Ris = uniqueinds(A, i)         
     n = dim(Ris)
 
     # Generate sparse embedding
-    omega = sparse_sign_matrix(l,n,s, Array{Int32}(undef, n * s), Array{Float64}(undef, n * s); omega=true)
+    omega = sparse_sign_matrix(l,n,s, Array{Int32}(undef, n * s), Array{Float64}(undef, n * s); omega=true,injective=injective)
 
     # Sketch the matrix and applying QR 
     A_sk = sketched_matricization(A, mode , omega)
@@ -122,14 +136,14 @@ end
 ## This code does not use the sparse arrays sparse matrix. We made this because
 ## We found that the sparse arrays matrix creates a lot of memory and can be slow for 
 ## very large matrices.
-function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true)
+function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true,injective=false)
     Ris = uniqueinds(A, i)         
     n = dim(Ris)
 
     # Generate sparse embedding
     vals = Array{Float64}(undef, n * s)
     rows = Array{Int32}(undef, n * s)
-    sparse_sign_matrix(l,n,s, rows, vals; omega=false)
+    sparse_sign_matrix(l,n,s, rows, vals; omega=false,injective=injective)
 
     # Sketch the matrix and applying QR 
     A_sk = sketched_matricization(A, mode, l, rows, vals, s) 

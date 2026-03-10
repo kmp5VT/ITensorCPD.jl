@@ -84,6 +84,12 @@
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 
+    int_opt_A =
+          als_optimize(A, cp_A; alg = ITensorCPD.SEQRCSPivProjected((1,), (800,), (1,2,3),(20,20,20)),
+          check, verbose, shuffle_pivots=true, normal =false ,injective = true);
+      @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
+            norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
+
     direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(direct_inversion_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
