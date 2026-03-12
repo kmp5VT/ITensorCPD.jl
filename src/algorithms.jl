@@ -358,7 +358,6 @@ abstract type ProjectionAlgorithm end
     ### QR method is replaced with a custom algorithm for randomized pivoted QR.
     ### The SEQRCS was developed by Israa Fakih and Laura Grigori (DOI: )
     ### The randomized method is only included for specified modes
-    
     struct SEQRCSPivProjected <: ProjectionAlgorithm
         Start::Union{<:Tuple, <:Int}
         End::Union{<:Tuple, <:Int}
@@ -383,8 +382,41 @@ abstract type ProjectionAlgorithm end
         copy_alg(alg::SEQRCSPivProjected, new_start = 0, new_end = 0) = 
         SEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
 
+    
+    ### This algorithm is similar to the SE-QRCS algorithms above but tries to fix the problem of when 
+    ### There are a large number of leverage scores in the problem. This method leverages the convergence of the
+    ### leverage scores of the KRP to find a single sample from the distribution of the KRP (instead of the target tensor).
+    ### The method first computes a small uniform random sampling of each LS subproblem and solves the ALS one time
+    ### This puts the leverage scores of the factors "close" to the leverage scores of T. We then call the SE-QRCS method
+    ### on the KRP (in a matrix free way) to order the positions of the leverage scores in the KRP and sample from this 
+    ### distribution once. This allows the number of known large leverage score positions to scale with R and not the dimension
+    ### of the target tensor.
+    struct KSEQRCSPivProjected <: ProjectionAlgorithm
+        Start::Union{<:Tuple, <:Int}
+        End::Union{<:Tuple, <:Int}
+        random_modes
+        rank_vect
+        
+        function KSEQRCSPivProjected(n, m, rrmodes=nothing, rank_vect=nothing) 
+            rrmodes = isnothing(rrmodes) ? nothing : Tuple(rrmodes)
+            rank_vect = isnothing(rank_vect) ? nothing : rank_vect isa Dict ? rank_vect : Dict(rrmodes .=> Tuple(rank_vect))
+            new(n, m, rrmodes, rank_vect)
+        end
+    end
+
+    ## TODO modify to use ranges 
+    KSEQRCSPivProjected() = SEQRCSPivProjected(1, 0, nothing, nothing)
+    KSEQRCSPivProjected(n::Int) = SEQRCSPivProjected(1, n, nothing, nothing)
+    KSEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
+
+    random_modes(alg::KSEQRCSPivProjected) = alg.random_modes
+    rank_vect(alg::KSEQRCSPivProjected) = alg.rank_vect
+
+    copy_alg(alg::KSEQRCSPivProjected, new_start = 0, new_end = 0) = 
+    SEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
+
     ## This is a union class so that the operations work on both pivot based solver algorithms
-    const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected}
+    const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected, KSEQRCSPivProjected}
 
         start(alg::PivotBasedSolvers) = alg.Start
         stop(alg::PivotBasedSolvers) = alg.End
