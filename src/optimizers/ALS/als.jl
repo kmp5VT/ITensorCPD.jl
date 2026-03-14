@@ -11,6 +11,7 @@ struct ALS <: CPDOptimizer
 end
 
 Base.copy(als::ALS) = ALS(als.target, als.mttkrp_alg, copy(als.additional_items), als.check)
+iter(als::ALS) = iter(als.check)
 
 include("optimize.jl")
 
@@ -470,6 +471,7 @@ function compute_als(
     extra_args = Dict(),
     check = nothing,
     normal=false,
+    stop_resample=-1,
     kwargs...
 )
     ## For each factor matrix compute its weights
@@ -496,6 +498,7 @@ function compute_als(
     end
     extra_args[:projects_tensors] = projects_tensors
     extra_args[:normal] = normal
+    extra_args[:stop_resample] = stop_resample
     return ALS(target, alg, extra_args, check)
 end
 
@@ -506,6 +509,7 @@ function compute_als(
     extra_args = Dict(),
     check = nothing,
     normal=false,
+    stop_resample=-1,
     kwargs...
 )
     ## For each factor matrix compute its weights
@@ -538,5 +542,6 @@ function compute_als(
     ## The order of indices are (indices which connect to the pivot, pivot_index).
     extra_args[:projects_tensors] = projects_tensors
     extra_args[:normal] = normal
+    extra_args[:stop_resample] = stop_resample
     return ALS(target, alg, extra_args, check)
 end

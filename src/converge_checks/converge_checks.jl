@@ -11,6 +11,7 @@ function norm_factors(partial_gram::Vector, λ::ITensor)
 end
 
 save_mttkrp(::ConvergeAlg, ::ITensor) = nothing
+iter(alg::ConvergeAlg) = alg.iter
 
 include("no_check.jl")
 include("fit_check.jl")
