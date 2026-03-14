@@ -230,7 +230,7 @@ abstract type ProjectionAlgorithm end
 
                 println("$(dim(cprank))\t$(als.check.iter)\t$(cpfit)")
             end
-            if als.check.iter == als.check.max_counter
+            if als.check.iter > als.check.max_counter
                 als.check.iter = 0
             end
             return false
