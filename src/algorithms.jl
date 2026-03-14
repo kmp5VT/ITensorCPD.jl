@@ -417,15 +417,15 @@ abstract type ProjectionAlgorithm end
     end
 
     ## TODO modify to use ranges 
-    KSEQRCSPivProjected() = SEQRCSPivProjected(1, 0, nothing, nothing)
-    KSEQRCSPivProjected(n::Int) = SEQRCSPivProjected(1, n, nothing, nothing)
-    KSEQRCSPivProjected(n::Tuple) = SEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
+    KSEQRCSPivProjected() = KSEQRCSPivProjected(1, 0, nothing, nothing)
+    KSEQRCSPivProjected(n::Int) = KSEQRCSPivProjected(1, n, nothing, nothing)
+    KSEQRCSPivProjected(n::Tuple) = KSEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
 
     random_modes(alg::KSEQRCSPivProjected) = alg.random_modes
     rank_vect(alg::KSEQRCSPivProjected) = alg.rank_vect
 
     copy_alg(alg::KSEQRCSPivProjected, new_start = 0, new_end = 0) = 
-    SEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
+    KSEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
 
     ## This is a union class so that the operations work on both pivot based solver algorithms
     const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected, KSEQRCSPivProjected}
