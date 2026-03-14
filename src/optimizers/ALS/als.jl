@@ -350,7 +350,7 @@ function compute_als(
     kwargs...
 )
     updated_cpd = ITensorCPD.als_optimize(target, cp; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
-    check=ITensorCPD.NoCheck(prelim_niter), normal=false)
+    check=ITensorCPD.NoCheck(prelim_niter), normal=false, stop_resample=0,)
     lst = random_modes(alg)
     lst = isnothing(lst) ? [] : lst
     cprank = cp_rank(cp)
