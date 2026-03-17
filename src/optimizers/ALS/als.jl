@@ -345,15 +345,23 @@ function compute_als(
     trunc_tol = 0.01,
     normal = true,
     injective = false,
+    guess_num_levs=nothing,
     prelim_sample_size=4000,
     prelim_niter=10,
     kwargs...
 )
-    updated_cpd = ITensorCPD.als_optimize(target, cp; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
-    check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
+    updated_cpd=nothing
+    if isnothing(guess_num_levs)
+        updated_cpd = ITensorCPD.als_optimize(target, cp; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
+        check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
+    else
+        dummy_cpd = random_CPD(target, guess_num_levs)
+        updated_cpd = ITensorCPD.als_optimize(target, dummy_cpd; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
+        check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
+    end
     lst = random_modes(alg)
     lst = isnothing(lst) ? [] : lst
-    cprank = cp_rank(cp)
+    cprank = cp_rank(updated_cpd)
     rank_sk = rank_vect(alg)
     ref_pivs = Vector{Vector{Int}}()
     pivots = Vector{Vector{Int}}()
