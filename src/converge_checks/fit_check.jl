@@ -54,7 +54,7 @@ function check_converge(check::FitCheck, factors, λ, partial_gram; verbose = tr
         check.counter = 0
     end
 
-    if check.iter == check.max_counter
+    if check.iter > check.max_counter
         check.total_iter= check.iter
         check.iter = 0
         check.counter = 0

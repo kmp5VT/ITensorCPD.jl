@@ -11,6 +11,7 @@ struct ALS <: CPDOptimizer
 end
 
 Base.copy(als::ALS) = ALS(als.target, als.mttkrp_alg, copy(als.additional_items), als.check)
+iter(als::ALS) = iter(als.check)
 
 include("optimize.jl")
 
@@ -341,6 +342,111 @@ function compute_als(
 end
 
 function compute_als(
+    alg::KSEQRCSPivProjected,
+    target::ITensor,
+    cp::CPD{<:ITensor};
+    extra_args = Dict(),
+    check = nothing,
+    shuffle_pivots = true,
+    trunc_tol = 0.01,
+    normal = true,
+    injective = false,
+    guess_num_levs=nothing,
+    prelim_sample_size=4000,
+    prelim_niter=10,
+    kwargs...
+)
+    updated_cpd=nothing
+    if isnothing(guess_num_levs)
+        updated_cpd = ITensorCPD.als_optimize(target, cp; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
+        check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
+    else
+        dummy_cpd = random_CPD(target, guess_num_levs)
+        updated_cpd = ITensorCPD.als_optimize(target, dummy_cpd; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
+        check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
+    end
+    lst = random_modes(alg)
+    lst = isnothing(lst) ? [] : lst
+    cprank = cp_rank(updated_cpd)
+    rank_sk = rank_vect(alg)
+    ref_pivs = Vector{Vector{Int}}()
+    pivots = Vector{Vector{Int}}()
+    projectors = Vector{ITensor}()
+    targets = Vector{ITensor}()
+    qr_factors = Vector{AbstractArray}()
+    effective_ranks = Vector{Int}()
+    piv_id = nothing
+    for (i, n) in zip(inds(target), 1:length(cp))
+        Ris = uniqueinds(target, i)
+
+        dRis = dim(Ris)
+        int_end = stop(alg)
+        int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
+        int_end = iszero(int_end) ? dRis : int_end
+        int_end = dRis < int_end ? dRis : int_end
+
+        int_start = start(alg)
+        int_start = length(int_start) == 1 ? int_start[1] : int_start[n]
+        @assert int_start > 0 && int_start ≤ int_end
+
+        q = nothing
+        r = nothing
+        m = dim(i)
+        krp = itensor(array(ITensorCPD.had_contract(updated_cpd.factors[1:end .!= n], cprank), (Ris..., cprank)), Ris..., cprank)
+        if n in lst
+            ## TODO there is still a bug in this line below
+            k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
+            l=Int(round(3 * m * log(m)))
+            # l=Int(round(3 * m )) 
+            s=Int(round(log(m)))
+            q,r,p = SEQRCS(krp,ndims(krp),cprank,l,s,k_sk; compute_r = false, use_omega=false,injective = injective)
+            # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
+        else
+            Tmat = reshape(array(krp, (cprank, Ris...)), (dim(cprank), dim(Ris)))
+            q, r, p = qr(Tmat, ColumnNorm())
+        end
+        dr = diag(r)
+        r = nothing
+        GC.gc()
+
+        push!(ref_pivs, deepcopy(p))
+
+        # meff = sum(abs.(diag(r)) ./ maximum(abs.(diag(r))) .> trunc_tol)
+        meff = sum(abs.(dr) ./ maximum(abs.(dr)) .> trunc_tol)
+        push!(effective_ranks, meff)
+        p1 = p[1:meff]
+        ## We skip the rest of the pivots in p because we assume we took all the important directions already
+        p_rest = p[meff+1:end]
+        p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
+        p = vcat(p1, p2)
+        push!(pivots, p)
+
+        ### QR based inital guess strategy.
+        # idx = Index(m, "rank")
+        # qt = had_contract(itensor(copy(q), Index(m),idx), itensor(dr, idx), idx)
+        # q = array(qt)
+        # push!(qr_factors, q)
+
+        ndim = int_end - int_start + 1
+        piv_id = Index(ndim, "pivot")
+
+        push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
+        TP = fused_flatten_sample(target, n, projectors[n])
+        
+    push!(targets, TP)
+    end
+    extra_args[:ref_projectors] = ref_pivs
+    extra_args[:projects] = pivots
+    extra_args[:projects_tensors] = projectors
+    extra_args[:target_transform] = targets
+    extra_args[:qr_factors] = qr_factors
+    extra_args[:effective_ranks] = effective_ranks
+    extra_args[:normal] = normal
+    
+    return ALS(ITensor(inds(target)), alg, extra_args, check)
+end
+
+function compute_als(
     alg::SketchProjected,
     target::ITensor,
     cp::CPD{<:ITensor};
@@ -379,6 +485,7 @@ function compute_als(
     extra_args = Dict(),
     check = nothing,
     normal=false,
+    stop_resample=-1,
     kwargs...
 )
     ## For each factor matrix compute its weights
@@ -405,6 +512,7 @@ function compute_als(
     end
     extra_args[:projects_tensors] = projects_tensors
     extra_args[:normal] = normal
+    extra_args[:stop_resample] = stop_resample
     return ALS(target, alg, extra_args, check)
 end
 
@@ -415,6 +523,7 @@ function compute_als(
     extra_args = Dict(),
     check = nothing,
     normal=false,
+    stop_resample=-1,
     kwargs...
 )
     ## For each factor matrix compute its weights
@@ -447,5 +556,6 @@ function compute_als(
     ## The order of indices are (indices which connect to the pivot, pivot_index).
     extra_args[:projects_tensors] = projects_tensors
     extra_args[:normal] = normal
+    extra_args[:stop_resample] = stop_resample
     return ALS(target, alg, extra_args, check)
 end
