@@ -386,16 +386,17 @@ function compute_als(
         q = nothing
         r = nothing
         m = dim(i)
-        krp = itensor(array(ITensorCPD.had_contract(updated_cpd.factors[1:end .!= n], cprank), (Ris..., cprank)), Ris..., cprank)
         if n in lst
             ## TODO there is still a bug in this line below
             k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
             l=Int(round(3 * m * log(m)))
             # l=Int(round(3 * m )) 
             s=Int(round(log(m)))
-            q,r,p = SEQRCS(krp,ndims(krp),cprank,l,s,k_sk; compute_r = false, use_omega=false,injective = injective)
+            q,r,p = SEQRCS(updated_cpd.factors[1:end .!= n], cprank,l,s,k_sk; compute_r = false, use_omega=false,injective = injective)
             # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
         else
+            ## TODO there should be a QR algorithm for structured tensors like the QR.
+            krp = itensor(array(ITensorCPD.had_contract(updated_cpd.factors[1:end .!= n], cprank), (Ris..., cprank)), Ris..., cprank)
             Tmat = reshape(array(krp, (cprank, Ris...)), (dim(cprank), dim(Ris)))
             q, r, p = qr(Tmat, ColumnNorm())
         end
