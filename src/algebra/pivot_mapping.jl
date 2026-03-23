@@ -91,7 +91,7 @@ function  sketched_matricization(T::ITensor, k::Int, omega)
 end
 
 ## For each column in omega there are s nonzero values 
-## We give this a lost on nonzero row values in omega ordered from [1,1,1,...1, 2,2,2...,2, ..., col,col,col,...]
+## We give this a list on nonzero row values in omega ordered from [1,1,1,...1, 2,2,2...,2, ..., col,col,col,...]
 ## Where the number of nonzeros in col_i = s.
 ## What we do is find the position of each nonzero in the row order (divide by s) and then look up in vals what the value 
 ## of said nonzero is.
