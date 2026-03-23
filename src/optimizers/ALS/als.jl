@@ -346,11 +346,12 @@ function compute_als(
     normal = true,
     injective = false,
     guess_num_levs=nothing,
-    prelim_sample_size=4000,
+    prelim_sample_size=nothing,
     prelim_niter=10,
     kwargs...
 )
     updated_cpd=nothing
+    prelim_sample_size = isnothing(updated_cpd) ? (10 * dim(cp_rank(cp))) : (5 * guess_num_levs)
     if isnothing(guess_num_levs)
         updated_cpd = ITensorCPD.als_optimize(target, cp; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
         check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
