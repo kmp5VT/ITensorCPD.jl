@@ -80,7 +80,7 @@ SIAM Journal on Matrix Analysis and Applications, 45(4), 1782-1804, 2024
 }
 
 """
-function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r=true, use_omega::Bool=false,injective =false)
+function SEQRCS(A::ITensor,mode::Int,i,l,s,t; compute_r=true, use_omega::Bool=false,injective =false)
     return SEQRCS(Val(use_omega), A, mode, i, l, s, t; compute_r,injective)
 end
 
@@ -157,17 +157,6 @@ function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true,
     rowsMat = reshape(rows, (s, n))
     p_sk = @inbounds p_sk[1:t]
     indices = unique(collect(Iterators.flatten(map(p->findall(col -> any(==(p), col), eachcol(rowsMat)), p_sk))))
-    # @show indices
-    # indices = Vector{Int}()
-    # p_sk = Dict((@inbounds p_sk[1:t]) .=> 1)
-    # for i in eachcol(rowsMat)
-    #     for j in i
-    #         if haskey(p_sk, j)
-    #             push!(indices, @inbounds i.indices[2])
-    #             break
-    #         end
-    #     end
-    # end
     
     indices_ind = Index(length(indices),"ind")
     indices_tensor = itensor(Int, indices, indices_ind)
