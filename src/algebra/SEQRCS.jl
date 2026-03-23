@@ -180,3 +180,58 @@ function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true,
 
     return Q,R,p
 end
+
+function SEQRCS(krp::Vector{ITensor},i,l,s,t; compute_r=true, use_omega=false, injective=false)
+    Ris = ind.(krp, 1)         
+    n = dim(Ris)
+
+    # Generate sparse embedding
+    ## TODO remove the need for full omega, use efficient representation.
+    omega = sparse_sign_matrix(l,n,s, Array{Int32}(undef, n * s), Array{Float64}(undef, n * s); omega=true,injective=injective)
+
+    # Sketch the matrix and applying QR 
+    A_sk = omega_hadamard(krp, ind(krp[1], 2), omega)
+    println("The size of A_sk is $(size(A_sk))")
+    
+    _, _, p_sk = qr!(array(A_sk), ColumnNorm())  
+    
+    ## TODO working here. This can be threadwise parallelized which
+    ## Will help with the cost. 
+    indices = Vector{Int}()
+    p_sk=p_sk[1:t]
+
+    ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
+    rows_sel = omega[p_sk,:]
+    omega = nothing;
+    indices = findall(col -> any(!=(0), col), eachcol(rows_sel))
+    indices_ind = Index(length(indices),"ind")
+    println("The size of A_subset is $(length(indices))")
+
+    ## Perform QR on A_subset to get final 'k' pivots
+    ## TODO fix this problem. Right now pivot_hadamard gives different result from 
+    ## fused_flatten_sample. Should be the same.
+    indices_tensor = itensor(Int, indices, indices_ind)
+    A = had_contract(krp, ind(krp[1],2))
+    mode = length(inds(A))
+    Q, R, p_subset = qr!(array(fused_flatten_sample(A, mode, indices_tensor)), ColumnNorm()) 
+
+    # indices_tensor = itensor(tensor(Diag(indices), (Ris..., indices_ind)))
+    # Q, R, p_subset = qr!(array(pivot_hadamard(krp, ind(krp[1], 2), indices_tensor)), ColumnNorm())
+    
+    rem_indices = setdiff(1:n,indices)
+    p = vcat(indices[p_subset],rem_indices)
+
+    ## Form  A_rem to get the factor 'R' 
+    ## We can remove this part no need to get Q and R
+    ## but keeping it just to make sure that the function is performing well
+    if compute_r
+        rem_indices_ind = Index(length(rem_indices),"rem_ind")
+        rem_indices_tensor = itensor(rem_indices, rem_indices_ind)
+        A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
+        A_rem = matrix(A_rem)
+        R = hcat(R,Q'*A_rem)
+    end
+
+    return Q,R,p
+
+end
