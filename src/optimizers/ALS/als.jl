@@ -358,7 +358,9 @@ function compute_als(
     else
         dummy_cpd = random_CPD(target, guess_num_levs)
         updated_cpd = ITensorCPD.als_optimize(target, dummy_cpd; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
-        check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
+        check=ITensorCPD.NoCheck(prelim_niter ÷ 2), normal=true, stop_resample=0,verbose=true)
+        updated_cpd = ITensorCPD.als_optimize(target, updated_cpd; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
+        check=ITensorCPD.NoCheck(prelim_niter ÷ 2), normal=true, stop_resample=0,verbose=true)
     end
     lst = random_modes(alg)
     lst = isnothing(lst) ? [] : lst
@@ -482,11 +484,13 @@ function compute_als(
     check = nothing,
     normal=false,
     stop_resample=-1,
+    cache_sampled_targets=true,
     kwargs...
 )
     ## For each factor matrix compute its weights
     extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
     projects_tensors = Vector{ITensor}()
+    cache_sampled_targets = (stop_resample == -1 ? false : cache_sampled_targets)
     for fact in 1:length(cp)
         ## grab the tensor indices for all other factors but fact
         Ris = inds(cp)[1:end .!= fact]
@@ -509,6 +513,8 @@ function compute_als(
     extra_args[:projects_tensors] = projects_tensors
     extra_args[:normal] = normal
     extra_args[:stop_resample] = stop_resample
+    extra_args[:sampled_targets] = Vector{ITensor}(undef, ndims(target))
+    extra_args[:cache_sampled_targets] = cache_sampled_targets
     return ALS(target, alg, extra_args, check)
 end
 

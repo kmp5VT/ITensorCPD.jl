@@ -287,9 +287,20 @@ abstract type ProjectionAlgorithm end
 
         function matricize_tensor(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int)
             ## I need to turn this into an ITensor and then pass it to the computed algorithm.
-            return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
+            return matricize_tensor(als.mttkrp_alg, val(als.additional_items[:cache_sampled_targets]), als, factors, cp, rank, fact)
         end
 
+        function matricize_tensor(::LevScoreSampled, ::Val{false}, als, factors, cp, rank::Index, fact::Int)
+                return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
+        end
+
+        function matricize_tensor(::LevScoreSampled, ::Val{true}, als, factors, cp, rank::Index, fact::Int)
+            if als.check.iter ≤  als.additional_items[:stop_resample]
+                als.additional_items[:sampled_targets][fact] = fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
+            end
+
+            return als.additional_items[:sampled_targets][fact]
+        end
 
         function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
             ## update the factor weights.
