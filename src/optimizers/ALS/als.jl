@@ -358,9 +358,7 @@ function compute_als(
     else
         dummy_cpd = random_CPD(target, guess_num_levs)
         updated_cpd = ITensorCPD.als_optimize(target, dummy_cpd; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
-        check=ITensorCPD.NoCheck(prelim_niter ÷ 2), normal=true, stop_resample=0,verbose=true)
-        updated_cpd = ITensorCPD.als_optimize(target, updated_cpd; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
-        check=ITensorCPD.NoCheck(prelim_niter ÷ 2), normal=true, stop_resample=0,verbose=true)
+        check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
     end
     lst = random_modes(alg)
     lst = isnothing(lst) ? [] : lst
