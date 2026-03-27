@@ -202,7 +202,7 @@ function SEQRCS(krp::Vector{ITensor},i,l,s,t; compute_r=true, use_omega=false, i
 
     ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
     ## TODO will need to do this in a matrix free way without omega.
-    rows_sel = copy(omega[:,p_sk]')
+    rows_sel = omega[p_sk,:]
     omega = nothing;
     indices = findall(col -> any(!=(0), col), eachcol(rows_sel))
     indices_ind = Index(length(indices),"ind")
