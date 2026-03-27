@@ -287,7 +287,7 @@ abstract type ProjectionAlgorithm end
 
         function matricize_tensor(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int)
             ## I need to turn this into an ITensor and then pass it to the computed algorithm.
-            return matricize_tensor(als.mttkrp_alg, val(als.additional_items[:cache_sampled_targets]), als, factors, cp, rank, fact)
+            return matricize_tensor(als.mttkrp_alg, Val(als.additional_items[:cache_sampled_targets]), als, factors, cp, rank, fact)
         end
 
         function matricize_tensor(::LevScoreSampled, ::Val{false}, als, factors, cp, rank::Index, fact::Int)
