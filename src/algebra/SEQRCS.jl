@@ -190,10 +190,10 @@ function SEQRCS(krp::Vector{ITensor},i,l,s,t; compute_r=true, use_omega=false, i
     omega = sparse_sign_matrix(l,n,s, Array{Int32}(undef, n * s), Array{Float64}(undef, n * s); omega=true,injective=injective)
 
     # Sketch the matrix and applying QR 
-    A_sk = omega_hadamard(krp, ind(krp[1], 2), omega)
+    A_sk = omega_hadamard(krp, i, omega)
     println("The size of A_sk is $(size(A_sk))")
     
-    _, _, p_sk = qr!(array(A_sk), ColumnNorm())  
+    _, _, p_sk = qr!(copy(array(A_sk)'), ColumnNorm())  
     
     ## TODO working here. This can be threadwise parallelized which
     ## Will help with the cost. 
