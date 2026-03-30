@@ -386,6 +386,8 @@ function compute_als(
 
         q = nothing
         r = nothing
+        ## I still use dim(i) because we are looking for the projection on dimension i. If we choose R its 
+        ## very expensive. This works well so we need to figure out what size to make this variable.
         m = dim(i)
         if n in lst
             ## TODO there is still a bug in this line below
