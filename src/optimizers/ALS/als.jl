@@ -352,11 +352,12 @@ function compute_als(
     normal = true,
     injective = false,
     guess_num_levs=nothing,
-    prelim_sample_size=4000,
+    prelim_sample_size=nothing,
     prelim_niter=10,
     kwargs...
 )
     updated_cpd=nothing
+    prelim_sample_size = isnothing(updated_cpd) ? (10 * dim(cp_rank(cp))) : (5 * guess_num_levs)
     if isnothing(guess_num_levs)
         updated_cpd = ITensorCPD.als_optimize(target, cp; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
         check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
@@ -391,17 +392,20 @@ function compute_als(
 
         q = nothing
         r = nothing
+        ## I still use dim(i) because we are looking for the projection on dimension i. If we choose R its 
+        ## very expensive. This works well so we need to figure out what size to make this variable.
         m = dim(i)
-        krp = itensor(array(ITensorCPD.had_contract(updated_cpd.factors[1:end .!= n], cprank), (Ris..., cprank)), Ris..., cprank)
         if n in lst
             ## TODO there is still a bug in this line below
             k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
             l=Int(round(3 * m * log(m)))
             # l=Int(round(3 * m )) 
             s=Int(round(log(m)))
-            q,r,p = SEQRCS(krp,ndims(krp),cprank,l,s,k_sk; compute_r = false, use_omega=false,injective = injective)
+            q,r,p = SEQRCS(updated_cpd.factors[1:end .!= n], cprank,l,s,k_sk; compute_r = false, use_omega=false,injective = injective)
             # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
         else
+            ## TODO there should be a QR algorithm for structured tensors like the QR.
+            krp = itensor(array(ITensorCPD.had_contract(updated_cpd.factors[1:end .!= n], cprank), (Ris..., cprank)), Ris..., cprank)
             Tmat = reshape(array(krp, (cprank, Ris...)), (dim(cprank), dim(Ris)))
             q, r, p = qr(Tmat, ColumnNorm())
         end
@@ -486,11 +490,13 @@ function compute_als(
     check = nothing,
     normal=false,
     stop_resample=-1,
+    cache_sampled_targets=true,
     kwargs...
 )
     ## For each factor matrix compute its weights
     extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
     projects_tensors = Vector{ITensor}()
+    cache_sampled_targets = (stop_resample == -1 ? false : cache_sampled_targets)
     for fact in 1:length(cp)
         ## grab the tensor indices for all other factors but fact
         Ris = inds(cp)[1:end .!= fact]
@@ -513,6 +519,8 @@ function compute_als(
     extra_args[:projects_tensors] = projects_tensors
     extra_args[:normal] = normal
     extra_args[:stop_resample] = stop_resample
+    extra_args[:sampled_targets] = Vector{ITensor}(undef, ndims(target))
+    extra_args[:cache_sampled_targets] = cache_sampled_targets
     return ALS(target, alg, extra_args, check)
 end
 
