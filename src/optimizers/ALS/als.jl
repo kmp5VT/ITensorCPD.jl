@@ -1,7 +1,6 @@
 using LinearAlgebra: ColumnNorm, diagm
 using ITensors.NDTensors:Diag
 using ITensors: tags
-abstract type CPDOptimizer end
 
 struct ALS <: CPDOptimizer
     target::Any
@@ -12,8 +11,6 @@ end
 
 Base.copy(als::ALS) = ALS(als.target, als.mttkrp_alg, copy(als.additional_items), als.check)
 iter(als::ALS) = iter(als.check)
-
-include("optimize.jl")
 
 function als_optimize(
     target,
@@ -358,7 +355,7 @@ function compute_als(
     else
         dummy_cpd = random_CPD(target, guess_num_levs)
         updated_cpd = ITensorCPD.als_optimize(target, dummy_cpd; alg=ITensorCPD.LevScoreSampled(prelim_sample_size),
-        check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0,verbose=true)
+        check=ITensorCPD.NoCheck(prelim_niter), normal=true, stop_resample=0, verbose=true)
     end
     lst = random_modes(alg)
     lst = isnothing(lst) ? [] : lst
@@ -431,7 +428,7 @@ function compute_als(
         push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
         TP = fused_flatten_sample(target, n, projectors[n])
         
-    push!(targets, TP)
+        push!(targets, TP)
     end
     extra_args[:ref_projectors] = ref_pivs
     extra_args[:projects] = pivots
@@ -440,6 +437,7 @@ function compute_als(
     extra_args[:qr_factors] = qr_factors
     extra_args[:effective_ranks] = effective_ranks
     extra_args[:normal] = normal
+    # extra_args[:krp_views] = Vector{Vector{arraytype}}()
     
     return ALS(ITensor(inds(target)), alg, extra_args, check)
 end
