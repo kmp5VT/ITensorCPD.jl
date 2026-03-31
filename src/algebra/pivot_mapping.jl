@@ -88,7 +88,7 @@ function  sketched_matricization(T::ITensor, k::Int, omega)
   As_slice = eachcol(As)
   stride = strides(T.tensor)[k]
   for j in 1:l
-    m = @view omega[j,:];
+    m = @inbounds omega[j,:];
     pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), m.nzind)
     ## Shouldn't we multiply by + or - 1 based on the sign of omega here?
     As_slice[j] .= [sum((@view v[pos .+ stride* (i-1)]) .* m.nzval) for i in 1:dim(idx)]
