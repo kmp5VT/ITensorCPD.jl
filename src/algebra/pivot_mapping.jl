@@ -57,17 +57,23 @@ end
 ## This function will take a higher-order tensor and a list of pivots
 ## and matricizes it along the `k`the dimension returning a matrix of size dim(k) x num_samples
 function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
-  v = vec(NDTensors.data(T))
+  # v = vec(NDTensors.data(T))
   idx = ind(T, k)
   As = similar(T, (idx, inds(pivots)[end]))
-  stride = strides(T.tensor)[k]
-  pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), NDTensors.data(pivots))
+  # stride = strides(T.tensor)[k]
+  # pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), NDTensors.data(pivots))
   ## Not sure which is faster
-  map!(i -> (@view v[pos .+ stride * (i - 1)]), eachrow(array(As)), 1:dim(idx))
+  # map!(i -> (@view v[pos .+ stride * (i - 1)]), eachrow(array(As)), 1:dim(idx))
+  
   # As_slice = eachrow(array(As))
   # for i in 1:dim(idx)
   #   As_slice[i] .= @view v[pos .+ stride * (i - 1)]
   # end
+  
+  @inbounds dims = [1:ndims(T)...][1:end .!= k]
+  slices = eachslice(array(T); dims=Tuple(dims...))
+  @inbounds eachcol(array(As)) .= slices[NDTensors.data(pivots)]
+
   return As
 end
 
@@ -82,7 +88,7 @@ function  sketched_matricization(T::ITensor, k::Int, omega)
   As_slice = eachcol(As)
   stride = strides(T.tensor)[k]
   for j in 1:l
-    m = omega[j,:];
+    m = @view omega[j,:];
     pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), m.nzind)
     ## Shouldn't we multiply by + or - 1 based on the sign of omega here?
     As_slice[j] .= [sum((@view v[pos .+ stride* (i-1)]) .* m.nzval) for i in 1:dim(idx)]
