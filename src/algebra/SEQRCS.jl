@@ -123,7 +123,7 @@ function SEQRCS(::Val{true}, A::ITensor, mode::Int, i, l, s, t; compute_r=true, 
     ## but keeping it just to make sure that the function is performing well
     if compute_r
         rem_indices_ind = Index(length(rem_indices),"rem_ind")
-        rem_indices_tensor = itensor(rem_indices, rem_indices_ind)
+        rem_indices_tensor = itensor(Int, rem_indices, rem_indices_ind)
         A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
         A_rem = matrix(A_rem)
         R = hcat(R,Q'*A_rem)
@@ -172,7 +172,7 @@ function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true,
     ## but keeping it just to make sure that the function is performing well
     if compute_r
         rem_indices_ind = Index(length(rem_indices),"rem_ind")
-        rem_indices_tensor = itensor(rem_indices, rem_indices_ind)
+        rem_indices_tensor = itensor(Int, rem_indices, rem_indices_ind)
         A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
         A_rem = matrix(A_rem)
         R = hcat(R,Q'*A_rem)
