@@ -40,5 +40,10 @@ end
     error_act = norm(A[:,p_act]-Q_act[:,1:k]*R_act[1:k,:],2)/norm(A,2)
     error = norm(A[:,p]-Q[:,1:k]*R[1:k,:],2)/norm(A,2)
     @test (abs(error - error_act) <= 1e-2)
+
+    Q,R,p = SEQRCS(A_tensor,1,m,2500,1,40; use_omega=true)
+    error_act = norm(A[:,p_act]-Q_act[:,1:k]*R_act[1:k,:],2)/norm(A,2)
+    error = norm(A[:,p]-Q[:,1:k]*R[1:k,:],2)/norm(A,2)
+    @test (abs(error - error_act) <= 1e-2)
 end
 
