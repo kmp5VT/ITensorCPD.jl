@@ -71,7 +71,7 @@ function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
   # end
   
   @inbounds dims = [1:ndims(T)...][1:end .!= k]
-  slices = eachslice(array(T); dims=Tuple(dims...))
+  slices = eachslice(array(T); dims=Tuple(dims))
   @inbounds eachcol(array(As)) .= slices[NDTensors.data(pivots)]
 
   return As
