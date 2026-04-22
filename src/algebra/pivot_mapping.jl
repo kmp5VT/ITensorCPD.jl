@@ -54,6 +54,8 @@ function transform_alpha_to_vectorized_tensor_position(α, extent, stride)::Int
   return T * stride * extent + (α - T * stride)
 end
 
+## TODO Add OhMyThreads to serial algorithms that could be trivially parallelized.
+# using OhMyThreads
 ## This function will take a higher-order tensor and a list of pivots
 ## and matricizes it along the `k`the dimension returning a matrix of size dim(k) x num_samples
 function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
@@ -72,7 +74,13 @@ function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
   
   @inbounds dims = [1:ndims(T)...][1:end .!= k]
   slices = eachslice(array(T); dims=Tuple(dims))
-  @inbounds eachcol(array(As)) .= slices[NDTensors.data(pivots)]
+  cols = eachcol(array(As))
+  pivs = NDTensors.data(pivots);
+  ## TODO add a check to see if threads > 1 && using LazyFunctionTensor && function of tensor is Python.
+  ## This will cause a break.
+  # tmap!(x-> (slices[x]), cols, pivs)
+  map!(x-> (slices[x]), cols, pivs)
+  # @inbounds eachcol(array(As)) .= Array.(slices[pivs])
 
   return As
 end
