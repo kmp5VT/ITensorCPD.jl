@@ -276,10 +276,11 @@ function pivot_hadamard(tensors, had::Index, pivots::ITensor)
     is = [commonind(pivots,x) for x in tensors]
 
     npivs = column_to_multi_coords(data(pivots), dim.(is))
-    #prod = ones(eltype(tensors[1]), size(npivs)[1], dim(had))
-    prod = typeof(array(tensors[1]))(ones(eltype(tensors[1]), size(npivs)[1], dim(had)))
-    for (tensor, i) in zip(tensors, 1:length(tensors))
-        prod .*= (@view array(tensor)[npivs[:,i], :])
+    arrayT =typeof(array(tensors[1]))
+    prod = arrayT(ones(eltype(tensors[1]), size(npivs)[1], dim(had)))
+
+    for (tensor, i) in zip(tensors, eachcol(npivs))
+        @inbounds prod .*= (@view array(tensor)[i, :])
     end
     
     return itensor(prod, inds(pivots)[end], had)
@@ -296,8 +297,8 @@ function pivot_hadamard(tensors, had::Index, pivots::Matrix, piv_ind::Union{<:No
     npivs = size(pivots)[1]
     arrayT =typeof(array(tensors[1]))
     prod = arrayT(ones(eltype(tensors[1]), npivs, dim(had)))
-    for (tensor, i) in zip(tensors, 1:length(tensors))
-        m = @view array(tensor)[pivots[:,i], :]
+    for (tensor, i) in zip(tensors, eachcol(pivots))
+        @inbounds m = @view array(tensor)[i, :]
         prod .*= m
     end
     
@@ -314,18 +315,24 @@ function omega_hadamard(tensors, had::Index, omega)
     is = [ind(tensor, 1) for tensor in tensors]
 
     l = size(omega,1)
-    s_prod = Array{eltype(tensors[1])}(undef, l, dim(had))
+    arrayT =typeof(array(tensors[1]))
+    s_prod = arrayT(undef, l, dim(had))
 
-    for j in 1:l
-        nnz_ind = findall(!iszero, omega[j,:])
-        npivs = column_to_multi_coords(nnz_ind, dim.(is))
+    dis = dim.(is)
+    omega_slice = eachrow(omega)
+    ## When I create an iterator over eachrow, the total number of sampled cols goes down and the
+    ## Error in the QR changes marginally. Not sure why so not going to do this step now.
+    for (j, os) in zip(1:l, omega_slice)
+    # for (j, os, sslice) in zip(1:l, omega_slice, eachrow(s_prod))
+        nnz_ind = findall(!iszero, os)
+        npivs = column_to_multi_coords(nnz_ind, dis)
         kr_prod = ones(eltype(tensors[1]), size(npivs,1), dim(had))
-        signs = omega[j, nnz_ind];
-        for (tensor, i) in zip(tensors, 1:length(tensors))
-            kr_prod .*= @view array(tensor)[npivs[:,i], :]
+        signs = os[nnz_ind]
+        for (tensor, i) in zip(tensors, eachcol(npivs))
+            kr_prod .*= (@view array(tensor)[i, :]) .* signs[:,]
         end
-        kr_prod .*= signs[:,]
         s_prod[j,:] = sum(kr_prod, dims=1)
+        #sslice = sum(kr_prod, dims=1)
     end
 
     return itensor(s_prod, Index(l,"l"), had)

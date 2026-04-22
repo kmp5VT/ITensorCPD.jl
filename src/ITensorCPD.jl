@@ -12,7 +12,7 @@ module ITensorCPD
 
   include("cpd.jl")
   include("algorithms.jl")
-  include("optimizers/ALS/als.jl")
+  include("optimizers/cpd_optimizers.jl")
   
   include("decompose.jl")
   

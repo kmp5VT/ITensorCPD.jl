@@ -40,5 +40,23 @@ end
     error_act = norm(A[:,p_act]-Q_act[:,1:k]*R_act[1:k,:],2)/norm(A,2)
     error = norm(A[:,p]-Q[:,1:k]*R[1:k,:],2)/norm(A,2)
     @test (abs(error - error_act) <= 1e-2)
-end
 
+    Q,R,p = SEQRCS(A_tensor,1,m,2500,1,40; use_omega=true)
+    error_act = norm(A[:,p_act]-Q_act[:,1:k]*R_act[1:k,:],2)/norm(A,2)
+    error = norm(A[:,p]-Q[:,1:k]*R[1:k,:],2)/norm(A,2)
+    @test (abs(error - error_act) <= 1e-2)
+
+    ## Test the SE-QRCS of a KRP structured tensor.
+    cpd = ITensorCPD.random_CPD(zeros(50, 100, 100), 50)
+    cprank = ITensorCPD.cp_rank(cpd)
+    krp = ITensorCPD.had_contract(cpd[2],cpd[3], cprank)
+
+    krpmat = itensor(array(krp, inds(krp)[[3,1,2]]), m,n)
+    Q,R,p = SEQRCS(krpmat, 1, m, 2500, 1, 40)
+
+    error = norm(array(krpmat)[:,p]-Q[:,1:k]*R[1:k,:],2)/norm(array(krpmat),2)
+    Qf,Rf,pf = SEQRCS([cpd[2], cpd[3]], cprank, 2500, 1, 40);
+    error_fact = norm(array(krpmat)[:,pf]-Qf[:,1:k]*Rf[1:k,:],2)/norm(array(krpmat),2)
+
+    @test abs(error - error_fact) ≤ 1e-2
+end

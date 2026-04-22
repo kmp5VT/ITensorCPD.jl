@@ -80,7 +80,7 @@ SIAM Journal on Matrix Analysis and Applications, 45(4), 1782-1804, 2024
 }
 
 """
-function SEQRCS(A:: ITensor,mode::Int,i,l,s,t; compute_r=true, use_omega::Bool=false,injective =false)
+function SEQRCS(A::ITensor,mode::Int,i,l,s,t; compute_r=true, use_omega::Bool=false,injective =false)
     return SEQRCS(Val(use_omega), A, mode, i, l, s, t; compute_r,injective)
 end
 
@@ -123,7 +123,7 @@ function SEQRCS(::Val{true}, A::ITensor, mode::Int, i, l, s, t; compute_r=true, 
     ## but keeping it just to make sure that the function is performing well
     if compute_r
         rem_indices_ind = Index(length(rem_indices),"rem_ind")
-        rem_indices_tensor = itensor(rem_indices, rem_indices_ind)
+        rem_indices_tensor = itensor(Int, rem_indices, rem_indices_ind)
         A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
         A_rem = matrix(A_rem)
         R = hcat(R,Q'*A_rem)
@@ -157,17 +157,6 @@ function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true,
     rowsMat = reshape(rows, (s, n))
     p_sk = @inbounds p_sk[1:t]
     indices = unique(collect(Iterators.flatten(map(p->findall(col -> any(==(p), col), eachcol(rowsMat)), p_sk))))
-    # @show indices
-    # indices = Vector{Int}()
-    # p_sk = Dict((@inbounds p_sk[1:t]) .=> 1)
-    # for i in eachcol(rowsMat)
-    #     for j in i
-    #         if haskey(p_sk, j)
-    #             push!(indices, @inbounds i.indices[2])
-    #             break
-    #         end
-    #     end
-    # end
     
     indices_ind = Index(length(indices),"ind")
     indices_tensor = itensor(Int, indices, indices_ind)
@@ -183,11 +172,70 @@ function SEQRCS(::Val{false}, A::ITensor, mode::Int, i, l, s, t; compute_r=true,
     ## but keeping it just to make sure that the function is performing well
     if compute_r
         rem_indices_ind = Index(length(rem_indices),"rem_ind")
-        rem_indices_tensor = itensor(rem_indices, rem_indices_ind)
+        rem_indices_tensor = itensor(Int, rem_indices, rem_indices_ind)
         A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
         A_rem = matrix(A_rem)
         R = hcat(R,Q'*A_rem)
     end
 
     return Q,R,p
+end
+
+function SEQRCS(krp::Vector{ITensor},i,l,s,t; compute_r=true, use_omega=false, injective=false)
+    Ris = ind.(krp, 1)         
+    n = dim(Ris)
+    cprank = ind(krp[1],2)
+
+    # Generate sparse embedding
+    ## TODO remove the need for full omega, use efficient representation.
+    omega = sparse_sign_matrix(l,n,s, Array{Int32}(undef, n * s), Array{Float64}(undef, n * s); omega=true,injective=injective)
+
+    # Sketch the matrix and applying QR 
+    A_sk = omega_hadamard(krp, cprank, omega)
+    println("The size of A_sk is $(size(A_sk))")
+    
+    _, _, p_sk = qr!(copy(array(A_sk)'), ColumnNorm())  
+    
+    ## TODO working here. This can be threadwise parallelized which
+    ## Will help with the cost. 
+    indices = Vector{Int}()
+    p_sk=p_sk[1:t]
+
+    ## Map back  pivots from 'A_sk' to 'A' and forming 'A_subset'
+    ## TODO will need to do this in a matrix free way without omega.
+    rows_sel = omega[p_sk,:]
+    omega = nothing;
+    indices = findall(col -> any(!=(0), col), eachcol(rows_sel))
+    indices_ind = Index(length(indices),"ind")
+    println("The size of A_subset is $(length(indices))")
+
+    ## Perform QR on A_subset to get final 'k' pivots
+    # indices_tensor = itensor(Int, indices, indices_ind)
+    # A = had_contract(krp, ind(krp[1],2))
+    # mode = length(inds(A))
+    # Q, R, p_subset = qr!(array(fused_flatten_sample(A, mode, indices_tensor)), ColumnNorm()) 
+
+    indices_tensor = itensor(tensor(Diag(indices), (Ris..., indices_ind)))
+    ## TODO is there a way to lazy permute?
+    Q, R, p_subset = qr!(copy(array(pivot_hadamard(krp, ind(krp[1], 2), indices_tensor))'), ColumnNorm())
+    
+    rem_indices = setdiff(1:n,indices)
+    p = vcat(indices[p_subset],rem_indices)
+
+    ## Form  A_rem to get the factor 'R' 
+    ## We can remove this part no need to get Q and R
+    ## but keeping it just to make sure that the function is performing well
+    if compute_r
+        ## TODO get this to work matrix free using pivot hadamard
+        A = had_contract(krp, ind(krp[1],2))
+        mode = length(inds(A))
+        rem_indices_ind = Index(length(rem_indices),"rem_ind")
+        rem_indices_tensor = itensor(Int, rem_indices, rem_indices_ind)
+        A_rem = fused_flatten_sample(A, mode, rem_indices_tensor)
+        A_rem = matrix(A_rem)
+        R = hcat(R,Q'*A_rem)
+    end
+
+    return Q,R,p
+
 end

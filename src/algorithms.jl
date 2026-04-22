@@ -230,7 +230,7 @@ abstract type ProjectionAlgorithm end
 
                 println("$(dim(cprank))\t$(als.check.iter)\t$(cpfit)")
             end
-            if als.check.iter == als.check.max_counter
+            if als.check.iter > als.check.max_counter
                 als.check.iter = 0
             end
             return false
@@ -271,19 +271,36 @@ abstract type ProjectionAlgorithm end
             nsamps = nsamples(als.mttkrp_alg)
             nsamps = length(nsamps) == 1 ? nsamps[1] : nsamps[fact]
 
-            sampled_cols = sample_factor_matrices(nsamps, fact, als.additional_items[:factor_weights])
-            ## Write new samples to pivot tensor
+            resample = als.additional_items[:stop_resample]
+            resample = resample < 0 || resample > iter(als)
             dRis = dims(inds(cp)[1:end .!= fact])
-            data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            if resample
+                sampled_cols = sample_factor_matrices(nsamps, fact, als.additional_items[:factor_weights])
+                ## Write new samples to pivot tensor
+                data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            else
+                sampled_cols = column_to_multi_coords(data(als.additional_items[:projects_tensors][fact]), dRis)
+            end
             
             return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:projects_tensors][fact])[end])
         end
 
         function matricize_tensor(::LevScoreSampled, als, factors, cp, rank::Index, fact::Int)
             ## I need to turn this into an ITensor and then pass it to the computed algorithm.
-            return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
+            return matricize_tensor(als.mttkrp_alg, Val(als.additional_items[:cache_sampled_targets]), als, factors, cp, rank, fact)
         end
 
+        function matricize_tensor(::LevScoreSampled, ::Val{false}, als, factors, cp, rank::Index, fact::Int)
+                return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
+        end
+
+        function matricize_tensor(::LevScoreSampled, ::Val{true}, als, factors, cp, rank::Index, fact::Int)
+            if als.check.iter ≤  als.additional_items[:stop_resample]
+                als.additional_items[:sampled_targets][fact] = fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
+            end
+
+            return @inbounds als.additional_items[:sampled_targets][fact]
+        end
 
         function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
             ## update the factor weights.
@@ -316,10 +333,16 @@ abstract type ProjectionAlgorithm end
             block_size = blocks(als.mttkrp_alg)
             block_size = length(block_size) == 1 ? block_size[1] : block_size[fact]
 
-            sampled_cols = block_sample_factor_matrices(nsamps, als.additional_items[:factor_weights], block_size, fact)
-            ## Write new samples to pivot tensor
+            resample = als.additional_items[:stop_resample]
+            resample = resample < 0 || resample > iter(als)
             dRis = dims(inds(cp)[1:end .!= fact])
-            data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            if resample
+                sampled_cols = block_sample_factor_matrices(nsamps, als.additional_items[:factor_weights], block_size, fact)
+                ## Write new samples to pivot tensor
+                data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            else
+                sampled_cols = column_to_multi_coords(data(als.additional_items[:projects_tensors][fact]), dRis)
+            end
             
             return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:projects_tensors][fact])[end])
         end
@@ -358,7 +381,6 @@ abstract type ProjectionAlgorithm end
     ### QR method is replaced with a custom algorithm for randomized pivoted QR.
     ### The SEQRCS was developed by Israa Fakih and Laura Grigori (DOI: )
     ### The randomized method is only included for specified modes
-    
     struct SEQRCSPivProjected <: ProjectionAlgorithm
         Start::Union{<:Tuple, <:Int}
         End::Union{<:Tuple, <:Int}
@@ -383,8 +405,41 @@ abstract type ProjectionAlgorithm end
         copy_alg(alg::SEQRCSPivProjected, new_start = 0, new_end = 0) = 
         SEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
 
+    
+    ### This algorithm is similar to the SE-QRCS algorithms above but tries to fix the problem of when 
+    ### There are a large number of leverage scores in the problem. This method leverages the convergence of the
+    ### leverage scores of the KRP to find a single sample from the distribution of the KRP (instead of the target tensor).
+    ### The method first computes a small uniform random sampling of each LS subproblem and solves the ALS one time
+    ### This puts the leverage scores of the factors "close" to the leverage scores of T. We then call the SE-QRCS method
+    ### on the KRP (in a matrix free way) to order the positions of the leverage scores in the KRP and sample from this 
+    ### distribution once. This allows the number of known large leverage score positions to scale with R and not the dimension
+    ### of the target tensor.
+    struct KSEQRCSPivProjected <: ProjectionAlgorithm
+        Start::Union{<:Tuple, <:Int}
+        End::Union{<:Tuple, <:Int}
+        random_modes
+        rank_vect
+        
+        function KSEQRCSPivProjected(n, m, rrmodes=nothing, rank_vect=nothing) 
+            rrmodes = isnothing(rrmodes) ? nothing : Tuple(rrmodes)
+            rank_vect = isnothing(rank_vect) ? nothing : rank_vect isa Dict ? rank_vect : Dict(rrmodes .=> Tuple(rank_vect))
+            new(n, m, rrmodes, rank_vect)
+        end
+    end
+
+    ## TODO modify to use ranges 
+    KSEQRCSPivProjected() = KSEQRCSPivProjected(1, 0, nothing, nothing)
+    KSEQRCSPivProjected(n::Int) = KSEQRCSPivProjected(1, n, nothing, nothing)
+    KSEQRCSPivProjected(n::Tuple) = KSEQRCSPivProjected(Tuple(ones(Int, length(n))), n, nothing, nothing)
+
+    random_modes(alg::KSEQRCSPivProjected) = alg.random_modes
+    rank_vect(alg::KSEQRCSPivProjected) = alg.rank_vect
+
+    copy_alg(alg::KSEQRCSPivProjected, new_start = 0, new_end = 0) = 
+    KSEQRCSPivProjected((iszero.(new_start) ? alg.Start : new_start), (iszero.(new_end) ? alg.End : new_end), alg.random_modes, alg.rank_vect)
+
     ## This is a union class so that the operations work on both pivot based solver algorithms
-    const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected}
+    const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected, KSEQRCSPivProjected}
 
         start(alg::PivotBasedSolvers) = alg.Start
         stop(alg::PivotBasedSolvers) = alg.End

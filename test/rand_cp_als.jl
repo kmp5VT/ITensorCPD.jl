@@ -1,50 +1,11 @@
-@testset "Standard CPD-ALS, elt=$elt" for elt in [Float64, ComplexF64]
+@testset "Random CPD-ALS, elt=$elt" for elt in [Float64, ComplexF64]
     verbose = false
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
     A = random_itensor(elt, i, j, k)
 
-    ## Calling decompose
-    
-    opt_A = ITensorCPD.decompose(A, r);
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-7
-
-    opt_A = ITensorCPD.decompose(array(A), r);
-    @test norm(itensor(array(reconstruct(opt_A)), inds(A)) - A) / norm(A) < 1e-7
-
-    @test_throws TypeError ITensorCPD.decompose(A, 400; solver = A)
-
-    check = ITensorCPD.FitCheck(1e-6, 100, norm(A))
-    opt_A = ITensorCPD.decompose(A, 400; check, verbose);
-    @test norm(A - reconstruct(opt_A)) / norm(A) < 1e-5
-
     ## Build a random guess
-    cp_A = random_CPD(array(A), r)
-
-    ## Optimize with no inputs
-    opt_A = als_optimize(itensor(array(A), inds(cp_A)), cp_A; check, verbose)
-    @test norm(reconstruct(opt_A) - itensor(array(A), inds(cp_A))) / norm(A) < 1e-5
-
     cp_A = random_CPD(A, r)
-    ## Optimize with one input
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP());
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-7
-
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP(), check = ITensorCPD.NoCheck(10))
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-1
-
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP(), check)
-    @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
-
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct())
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-7
-
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose);
-    @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
-
-    svd_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.TargetDecomp(), check);
-    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(svd_opt_A)) /
-          norm(ITensorCPD.reconstruct(opt_A)) < 1e-5
 
     check = ITensorCPD.FitCheck(1e-6, 20, norm(A))
 
@@ -59,6 +20,9 @@
     @test als.additional_items[:effective_ranks][1] < 20
     ITensorCPD.optimize(cp_A, als; verbose);
     
+    ## Reference optimization
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose);
+
     int_opt_A =
        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose, shuffle_pivots=true, trunc_tol=0.001);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
@@ -90,10 +54,6 @@
       @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
             norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 
-    direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check, verbose);
-    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(direct_inversion_opt_A)) /
-          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
-
     
     ## This tests to see if we can interpolate a known low rank tensor
     A = ITensorCPD.reconstruct(random_CPD(A, 20))
@@ -102,17 +62,36 @@
     cp_A = random_CPD(A, 10)
     opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose);
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
+
     int_opt_A =
         als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
-    check = ITensorCPD.CPAngleCheck(1e-5, 100)
-
-    cp_A = random_CPD(A, 10)
-    opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose);
-    exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
     int_opt_A =
         als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+    
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false, injective=true);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false, injective=true);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     ### Test for Leverage score sampling CPD 
@@ -167,7 +146,7 @@
      @test min_val < 0.1
 end
 
-@testset "Standard CPD-ALS, elt=$elt" for elt in [Float32, ComplexF32]
+@testset "Random CPD-ALS, elt=$elt" for elt in [Float32, ComplexF32]
     verbose = false
     i, j, k = Index.((20, 30, 40))
     r = Index(4, "CP_rank")
@@ -177,43 +156,13 @@ end
     cp = ITensorCPD.random_CPD(A, r)
     A = reconstruct(cp)
 
-    r = Index(400, "CP_rank")
-    check = ITensorCPD.FitCheck(1e-6, 100, norm(A))
-    opt_A = ITensorCPD.decompose(A, r; verbose, check)
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-3
-
-    @test_throws TypeError ITensorCPD.decompose(A, r; solver = A)
-
-    check = ITensorCPD.FitCheck(1e-6, 100, norm(A))
-    # opt_A = ITensorCPD.decompose(A, r; check, verbose)
-
     ## Build a random guess
     cp_A = random_CPD(A, r)
 
-    ## Optimize with no inputs
-    opt_A = als_optimize(A, cp_A; check, verbose)
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-5
-
-    ## Optimize with one input
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP())
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-5
-
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP(), check = ITensorCPD.NoCheck(10))
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-1
-
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP(), check)
-    @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 5e-5
-
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct())
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-5
-
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check)
-    @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 5e-5
-
-    check = ITensorCPD.FitCheck(1e-6, 20, norm(A))
-
 
     ## This method uses the interpolative squared to precondition the problem.
+    check = ITensorCPD.FitCheck(1e-6, 100, norm(A))
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check)
     int_opt_A =
        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
@@ -229,11 +178,26 @@ end
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 
-    direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check, verbose);
-    @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(direct_inversion_opt_A)) /
-          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
+    ## KSEQRCS gets the right answer no problem
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
 
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
     
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false, injective=true);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false, injective=true);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+
     ## This tests to see if we can interpolate a known low rank tensor
     A = ITensorCPD.reconstruct(random_CPD(A, 20))
 
@@ -269,16 +233,4 @@ end
     alg = ITensorCPD.BlockLevScoreSampled(100,3)
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
-end
-
-
-@testset "Build CPD to error threshold, elt=$elt" for elt in [Float64, ComplexF64]
-    verbose = false
-    i, j, k = Index.((20, 30, 40))
-    r = Index(400, "CP_rank")
-    A = random_itensor(elt, i, j, k)
-
-    opt_A = ITensorCPD.decompose(A, 1e-3, 400; check=ITensorCPD.FitCheck(1e-4, 100, norm(A)), start_rank = 200, rank_step = 200, verbose=false);
-    
-    @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-3
 end

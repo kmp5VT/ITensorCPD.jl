@@ -1,5 +1,5 @@
 mutable struct NoCheck <: ConvergeAlg
-    counter::Int
+    iter::Int
     max_counter::Int
     lastfit::Number
 
@@ -7,13 +7,13 @@ mutable struct NoCheck <: ConvergeAlg
 end
 
 function check_converge(check::NoCheck, factors, λ, partial_gram; verbose = false)
+    check.iter += 1
     rank = ind(λ, 1)
     if (verbose)
-        println("$(dim(rank))\t $(check.counter)")
+        println("$(dim(rank))\t $(check.iter)")
     end
-    if check.counter ≥ check.max_counter
+    if check.iter == check.max_counter
         return true
     end
-    check.counter += 1
     return false
 end
