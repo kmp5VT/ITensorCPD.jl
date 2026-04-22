@@ -5,7 +5,7 @@
     A = random_itensor(elt, i, j, k)
 
     ## Build a random guess
-    cp_A = random_CPD(array(A), r)
+    cp_A = random_CPD(A, r)
 
     check = ITensorCPD.FitCheck(1e-6, 20, norm(A))
 
@@ -20,6 +20,7 @@
     @test als.additional_items[:effective_ranks][1] < 20
     ITensorCPD.optimize(cp_A, als; verbose);
     
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose);
     int_opt_A =
        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose, shuffle_pivots=true, trunc_tol=0.001);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
@@ -139,6 +140,8 @@ end
 
 
     ## This method uses the interpolative squared to precondition the problem.
+    check = ITensorCPD.FitCheck(1e-6, 100, norm(A))
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check)
     int_opt_A =
        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
