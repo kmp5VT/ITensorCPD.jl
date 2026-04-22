@@ -178,6 +178,26 @@ end
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 
+    ## KSEQRCS gets the right answer no problem
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+    
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false, injective=true);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false, injective=true);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+
     ## This tests to see if we can interpolate a known low rank tensor
     A = ITensorCPD.reconstruct(random_CPD(A, 20))
 
