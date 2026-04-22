@@ -20,7 +20,9 @@
     @test als.additional_items[:effective_ranks][1] < 20
     ITensorCPD.optimize(cp_A, als; verbose);
     
+    ## Reference optimization
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose);
+
     int_opt_A =
        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose, shuffle_pivots=true, trunc_tol=0.001);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
@@ -60,17 +62,36 @@
     cp_A = random_CPD(A, 10)
     opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose);
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
+
     int_opt_A =
         als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
-    check = ITensorCPD.CPAngleCheck(1e-5, 100)
-
-    cp_A = random_CPD(A, 10)
-    opt_A = ITensorCPD.als_optimize(A, cp_A; check, verbose);
-    exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
     int_opt_A =
         als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (300), (1,2,3), 1), check,
+        normal=false);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+    
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (300), (1,2,3), 1), check,
+        normal=false, injective=true);
+    @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
+
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (300), (1,2,3), 1), check,
+        normal=false, injective=true);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     ### Test for Leverage score sampling CPD 
