@@ -299,7 +299,7 @@ abstract type ProjectionAlgorithm end
                 als.additional_items[:sampled_targets][fact] = fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
             end
 
-            return als.additional_items[:sampled_targets][fact]
+            return @inbounds als.additional_items[:sampled_targets][fact]
         end
 
         function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 

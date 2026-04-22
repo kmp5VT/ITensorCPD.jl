@@ -23,6 +23,7 @@ ITensors.ind(cp::CPD, i::Int) = inds(cp)[i]
 ITensors.itensor2inds(A::CPD)::Any = inds(A)
 paramT(cp::CPD{T}) where {T} = T
 Base.length(cp::CPD) = length(cp.factors)
+Base.ndims(cp::CPD) = length(cp.factors)
 
 Base.getindex(cp::CPD, i) = cp.factors[i]
 Base.getindex(cp::CPD) = cp.λ
