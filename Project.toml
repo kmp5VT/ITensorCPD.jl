@@ -24,7 +24,6 @@ ITCPDMetalExt = ["Metal"]
 
 [compat]
 LinearAlgebra = "1.10.0"
-OhMyThreads = "0.8.5"
 StatsBase = "0.34.6"
 julia = "1.10"
 
