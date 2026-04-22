@@ -80,17 +80,17 @@
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (300), (1,2,3), 1), check,
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
         normal=false);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
     
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (300), (1,2,3), 1), check,
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
         normal=false, injective=true);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (300), (1,2,3), 1), check,
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
         normal=false, injective=true);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
