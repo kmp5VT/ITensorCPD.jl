@@ -113,7 +113,7 @@
 
     alg = ITensorCPD.LevScoreSampled(100)
     check = ITensorCPD.CPAngleCheck(1e-5, 10)
-    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose=true);
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
     ### Test for Leverage score sampling CPD 
