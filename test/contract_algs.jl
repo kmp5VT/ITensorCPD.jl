@@ -109,7 +109,6 @@ end
 
   ## Inner product
   Chad = ITensorCPD.had_contract(A, B, j,k)
-  @show Chad
   C = zeros(Float64, dim(j),dim(k))
   for jj in 1:dim(j)
     for kk in 1:dim(k)

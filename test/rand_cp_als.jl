@@ -80,12 +80,12 @@
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1000), (1,2,3), 1), check,
         normal=false);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
     
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200), (1,2,3), 1), check,
         normal=false, injective=true);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
@@ -113,7 +113,7 @@
 
     alg = ITensorCPD.LevScoreSampled(100)
     check = ITensorCPD.CPAngleCheck(1e-5, 10)
-    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose=true);
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
     ### Test for Leverage score sampling CPD 
