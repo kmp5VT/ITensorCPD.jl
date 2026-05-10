@@ -159,8 +159,7 @@ function compute_als(
         piv_id = Index(ndim, "pivot")
         nind = Index(length(Ris))
 
-        # push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
-        push!(projectors, itensor(tensor(Dense(p[int_start:int_end, :]), (piv_id, nind))))
+        push!(projectors, itensor(Int, p[int_start:int_end, :], (piv_id, nind)))
         TP = fused_flatten_sample(target, n, projectors[n])
         
     push!(targets, TP)
@@ -265,8 +264,7 @@ function compute_als(
         piv_id = Index(ndim, "pivot")
         nind = Index(length(Ris))
 
-        # push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
-        push!(projectors, itensor(tensor(Dense(p[int_start:int_end, :]), (piv_id, nind))))
+        push!(projectors, itensor(Int, p[int_start:int_end, :], (piv_id, nind)))
         TP = fused_flatten_sample(target, n, projectors[n])
         
         push!(targets, TP)

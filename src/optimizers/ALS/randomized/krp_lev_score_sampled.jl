@@ -71,8 +71,7 @@ function compute_als(
         piv_ind = Index(nsamps, "selector_$(fact)")
 
         ## make the canonical pivot tensor. This list of pivots will be overwritten each ALS iteration
-        # push!(projects_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
-        push!(projects_tensors, itensor(tensor(Dense(sampled_cols), (piv_ind, nind))))
+        push!(projects_tensors, itensor(Int, sampled_cols, (piv_ind, nind)))
     end
     ## Notice the pivot tensor is actually a low rank tensor it stores the diagonal pivot values
     ## in α form (rows of the matricized tensor) and the indices which are captured in the pivot.
