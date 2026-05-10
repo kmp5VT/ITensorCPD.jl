@@ -26,9 +26,10 @@ end
         if resample
             sampled_cols = sample_factor_matrices(nsamps, fact, als.additional_items[:factor_weights])
             ## Write new samples to pivot tensor
-            data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            
+            array(als.additional_items[:projects_tensors][fact]) .= sampled_cols
         else
-            sampled_cols = column_to_multi_coords(data(als.additional_items[:projects_tensors][fact]), dRis)
+            sampled_cols = array(als.additional_items[:projects_tensors][fact])
         end
         
         return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:projects_tensors][fact])[1])
@@ -84,16 +85,15 @@ end
 
         resample = als.additional_items[:stop_resample]
         resample = resample < 0 || resample > iter(als)
-        dRis = dims(inds(cp)[1:end .!= fact])
         if resample
             sampled_cols = block_sample_factor_matrices(nsamps, als.additional_items[:factor_weights], block_size, fact)
             ## Write new samples to pivot tensor
-            data(als.additional_items[:projects_tensors][fact]) .= multi_coords_to_column(dRis, sampled_cols)
+            array(als.additional_items[:projects_tensors][fact]) .= sampled_cols
         else
-            sampled_cols = column_to_multi_coords(data(als.additional_items[:projects_tensors][fact]), dRis)
+            sampled_cols = array(als.additional_items[:projects_tensors][fact])
         end
         
-        return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:projects_tensors][fact])[end])
+        return pivot_hadamard(factors, rank, sampled_cols, inds(als.additional_items[:projects_tensors][fact])[1])
     end
 
     function matricize_tensor(::BlockLevScoreSampled, als, factors, cp, rank::Index, fact::Int)
