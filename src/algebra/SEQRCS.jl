@@ -190,6 +190,7 @@ function SEQRCS(krp::Vector{ITensor},i,l,s,t; compute_r=true, use_omega=false, i
     ## TODO remove the need for full omega, use efficient representation.
     omega = sparse_sign_matrix(l,n,s, Array{Int32}(undef, n * s), Array{Float64}(undef, n * s); omega=true,injective=injective)
 
+
     # Sketch the matrix and applying QR 
     A_sk = omega_hadamard(krp, cprank, omega)
     println("The size of A_sk is $(size(A_sk))")

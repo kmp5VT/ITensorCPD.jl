@@ -259,31 +259,16 @@ function pivot_hadamard(A::ITensor, B::ITensor, had::Index, pivots::ITensor)
 
     i = ind(A,1)
     j = ind(B,1)
-    npivs = column_to_multi_coords(data(pivots), dim.((i,j)))
+    npivs = array(pivots)
 
-    return itensor((array(A)[npivs[:,1], :] .* array(B)[npivs[:,2], :]), inds(pivots)[end], had)
+    return itensor((array(A)[npivs[:,1], :] .* array(B)[npivs[:,2], :]), inds(pivots)[1], had)
 end
 
 ## This function is special tensor product derived from the khatri-rao product
 ## each tensor must be a matrix with one matching mode. See above for a full description.
 ## This function works for a list of tensors to be fused via the Khatri-Rao product.
 function pivot_hadamard(tensors, had::Index, pivots::ITensor)
-    for tensor in tensors
-        @assert had == ind(tensor, 2)
-    end
-
-    ## Right now assume only one common ind.
-    is = [commonind(pivots,x) for x in tensors]
-
-    npivs = column_to_multi_coords(data(pivots), dim.(is))
-    arrayT =typeof(array(tensors[1]))
-    prod = arrayT(ones(eltype(tensors[1]), size(npivs)[1], dim(had)))
-
-    for (tensor, i) in zip(tensors, eachcol(npivs))
-        @inbounds prod .*= (@view array(tensor)[i, :])
-    end
-    
-    return itensor(prod, inds(pivots)[end], had)
+    return pivot_hadamard(tensors, had, array(pivots), ind(pivots, 1))
 end
 ## This function is special tensor product derived from the khatri-rao product
 ## each tensor must be a matrix with one matching mode. See above for a full description.
@@ -295,16 +280,20 @@ function pivot_hadamard(tensors, had::Index, pivots::Matrix, piv_ind::Union{<:No
     end
 
     npivs = size(pivots)[1]
+
     arrayT =typeof(array(tensors[1]))
     prod = arrayT(ones(eltype(tensors[1]), npivs, dim(had)))
+
     for (tensor, i) in zip(tensors, eachcol(pivots))
-        @inbounds m = @view array(tensor)[i, :]
-        prod .*= m
+        prod .*= @inbounds @view array(tensor)[i, :]
+        ## TODO convert this to a tmap function 
+        # tmap!(x-> (slices[x...]), cols, pivs)
     end
     
     piv_ind = isnothing(piv_ind) ? Index(npivs, "PivIdx") : piv_ind
     return itensor(prod, piv_ind, had)
 end
+
 ## This function works on a list of tensors and a sparse matrix omega 
 ## to directly sketch the Khatri–Rao product
 ## All the tesnors should be matrices

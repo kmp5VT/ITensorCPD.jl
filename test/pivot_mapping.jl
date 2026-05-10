@@ -62,9 +62,9 @@ using ITensorCPD: column_to_multi_coords
 
     p = [x for x in 1:100*150]
     l = Index(length(p), "Piv")
-    P = itensor(NDTensors.tensor(Diag(p), (i,j,l,)))
+    # P = itensor(NDTensors.tensor(Diag(p), (i,j,l,)))
 
-    pivs = ITensorCPD.column_to_multi_coords(data(P), dim.((i,j)))
+    pivs = ITensorCPD.column_to_multi_coords(p, dims((i,j)))
     sampled_had = Array{eltype(B)}(undef, (dim(l), dim(m)))
     for i in 1:dim(l)
       sampled_had[i,:] = array(exact_had)[pivs[i,1], pivs[i,2], :]
@@ -74,14 +74,14 @@ using ITensorCPD: column_to_multi_coords
 
     p = [rand(1:100*150) for x in 1:40]
     l = Index(length(p), "Piv")
-    P = itensor(NDTensors.tensor(Diag(p), (i,j,l,)))
-
-    pivs = ITensorCPD.column_to_multi_coords(data(P), dim.((i,j)))
+    pivs = column_to_multi_coords(p, dims((i,j)))
+    
     sampled_had = Array{eltype(B)}(undef, (dim(l), dim(m)))
     for i in 1:dim(l)
       sampled_had[i,:] = array(exact_had)[pivs[i,1], pivs[i,2], :]
     end
 
+    P = itensor(Int, pivs, l, Index(2))
     @test norm(array(ITensorCPD.pivot_hadamard(A, B, m, P)) - sampled_had) ≈ 0.0
 
     @test norm(ITensorCPD.pivot_hadamard([A, B], m, P)  - ITensorCPD.pivot_hadamard(A, B, m, P)) ≈ 0.0
@@ -92,12 +92,51 @@ using ITensorCPD: column_to_multi_coords
 
     p = [rand(1:100*150*200) for x in 1:200]
     l = Index(length(p), "Piv")
-    P = itensor(NDTensors.tensor(Diag(p), (i,j,k,l,)))
+    pivs = ITensorCPD.column_to_multi_coords(p, dims((i,j,k)))
 
-    pivs = ITensorCPD.column_to_multi_coords(data(P), dim.((i,j,k)))
+    P = itensor(Int, pivs, l, Index(3))
+    #P = itensor(NDTensors.tensor(Diag(p), (i,j,k,l,)))
+
     sampled_had = Array{eltype(B)}(undef, (dim(l), dim(m)))
     for i in 1:dim(l)
       sampled_had[i,:] = array(exact_had)[pivs[i,1], pivs[i,2], pivs[i,3], :]
     end
     norm(sampled_had - array(ITensorCPD.pivot_hadamard([A, B, C], m, P))) ≈ 0.0
+    @test all(array(ITensorCPD.fused_flatten_sample(exact_had, 4, P)) - sampled_had' .≈ 0)
+
+    p = [rand(1:100*150*200) for x in 1:200]
+    multi = column_to_multi_coords(p, dims((i,j,k)))
+    @test all(p - ITensorCPD.multi_coords_to_column(dims((i,j,k)), multi) .== 0)
+
+    ## Considering sparse matrix sketching
+    cpd = ITensorCPD.random_CPD(T, 10)
+    n = dim(inds(T)[1:end-1])
+    m = dim(T,4)
+    l=Int(round(3 * m * log(m)))
+    s=Int(round(log(m)))
+    vals = Array{Float64}(undef, n * s)
+    rows = Array{Int32}(undef, n * s)
+    omega = ITensorCPD.sparse_sign_matrix(l,n,s, rows, vals; omega=true,injective=false)
+    @test norm(reshape(array(T), n,m)' * omega' - ITensorCPD.sketched_matricization(T, 4, omega)) < 1e-12
+    @test norm(reshape(array(T), n,m)' * omega' - ITensorCPD.sketched_matricization(T, 4, l, rows, vals, s)) < 1e-12
+
+    cprank = ITensorCPD.cp_rank(cpd)
+    oh = ITensorCPD.omega_hadamard(cpd.factors[1:3], cprank, omega)
+    exact_had = ITensorCPD.had_contract(cpd.factors[1:3], cprank)
+    @test norm(array(oh)' - reshape(array(exact_had), (3 * 6 * 8, 10))' * omega') < 1e-12
+
+    
+    n = dim(inds(T)[1:end .!=2])
+    m = dim(T,2)
+    l=Int(round(3 * m * log(m)))
+    s=Int(round(log(m)))
+    vals = Array{Float64}(undef, n * s)
+    rows = Array{Int32}(undef, n * s)
+    omega = ITensorCPD.sparse_sign_matrix(l,n,s, rows, vals; omega=true,injective=false)
+
+    oh = ITensorCPD.omega_hadamard(cpd.factors[1:end .!=2], cprank, omega)
+    exact_had = ITensorCPD.had_contract(cpd.factors[1:end .!= 2], cprank)
+    (omega * reshape(array(exact_had), (3 * 8 * 2, 10)))
+    
+    @test norm(array(oh)' - reshape(array(exact_had), (3 * 8 * 2, 10))' * omega') < 1e-12
 end

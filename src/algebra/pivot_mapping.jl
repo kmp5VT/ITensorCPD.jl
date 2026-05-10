@@ -54,14 +54,12 @@ function transform_alpha_to_vectorized_tensor_position(α, extent, stride)::Int
   return T * stride * extent + (α - T * stride)
 end
 
-## TODO Add OhMyThreads to serial algorithms that could be trivially parallelized.
-# using OhMyThreads
 ## This function will take a higher-order tensor and a list of pivots
 ## and matricizes it along the `k`the dimension returning a matrix of size dim(k) x num_samples
 function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
   # v = vec(NDTensors.data(T))
   idx = ind(T, k)
-  As = similar(T, (idx, inds(pivots)[end]))
+  As = similar(T, (idx, inds(pivots)[1]))
   # stride = strides(T.tensor)[k]
   # pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), NDTensors.data(pivots))
   ## Not sure which is faster
@@ -75,11 +73,12 @@ function fused_flatten_sample(T::ITensor, k::Int, pivots::ITensor)
   @inbounds dims = [1:ndims(T)...][1:end .!= k]
   slices = eachslice(array(T); dims=Tuple(dims))
   cols = eachcol(array(As))
-  pivs = NDTensors.data(pivots);
+  pivs = Tuple.(eachrow(array(pivots)));
+
   ## TODO add a check to see if threads > 1 && using LazyFunctionTensor && function of tensor is Python.
   ## This will cause a break.
-  # tmap!(x-> (slices[x]), cols, pivs)
-  map!(x-> (slices[x]), cols, pivs)
+  tmap!(x-> (slices[x...]), cols, pivs)
+  # map!(x-> (slices[x]), cols, pivs)
   # @inbounds eachcol(array(As)) .= Array.(slices[pivs])
 
   return As
@@ -97,7 +96,7 @@ function  sketched_matricization(T::ITensor, k::Int, omega)
   stride = strides(T.tensor)[k]
   for j in 1:l
     m = @inbounds omega[j,:];
-    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), m.nzind)
+    pos = tmap(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, dim(idx), stride), m.nzind)
     ## Shouldn't we multiply by + or - 1 based on the sign of omega here?
     As_slice[j] .= [sum((@view v[pos .+ stride* (i-1)]) .* m.nzval) for i in 1:dim(idx)]
   end
@@ -129,12 +128,13 @@ function  sketched_matricization(T::ITensor, k::Int, l, rows, vals, s)
     dict_rows[i] = Vector{Int}()
   end
   map((i,j) -> push!(dict_rows[i], j), rows, range(1,length(rows)))
+  
   for (x, j) in zip(As_slice, 1:l)
     nzs = @inbounds dict_rows[j]
-    pos = map(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, didx, stride),
+    pos = tmap(x -> ITensorCPD.transform_alpha_to_vectorized_tensor_position(x, didx, stride),
                        nzs .÷ s + map(i -> i % s > 0 ? 1 : 0, nzs))
     m2 = @inbounds @view vals[nzs]
-    @inbounds x .= map(i -> dot((@inbounds @view v[pos .+ stride* (i-1)]), m2), 1:didx)
+    @inbounds x .= tmap(i -> dot((@inbounds @view v[pos .+ stride* (i-1)]), m2), 1:didx)
   end
   return As
 end 

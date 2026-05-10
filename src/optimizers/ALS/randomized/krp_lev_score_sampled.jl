@@ -16,7 +16,6 @@ function compute_als(
     for fact in 1:length(cp)
         ## grab the tensor indices for all other factors but fact
         Ris = inds(cp)[1:end .!= fact]
-        dRis = dims(Ris)
 
         ## sample the factor matrix space one taking nsamps independent samples from each
         ## tensor
@@ -24,13 +23,13 @@ function compute_als(
         nsamps = length(nsamps) == 1 ? nsamps[1] : nsamps[fact]
         sampled_cols = sample_factor_matrices(nsamps, fact, extra_args[:factor_weights])
 
-        ## We store the rows of the flattened tensor (i.e. α) because it can be converted to factor values
-        ## or values in the vectorized tensor
-        sampled_tensor_cols = multi_coords_to_column(dRis, sampled_cols)
-        piv_ind = Index(length(sampled_tensor_cols), "selector_$(fact)")
+        ## We store the tensor-wise indices because storing the column position or the vectorized step position (α) 
+        ## because this value is limited by dim(Ris) which can overflow int64
+        nind = Index(length(Ris))
+        piv_ind = Index(nsamps, "selector_$(fact)")
 
         ## make the canonical pivot tensor. This list of pivots will be overwritten each ALS iteration
-        push!(projects_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
+        push!(projects_tensors, itensor(tensor(Dense(sampled_cols), (piv_ind, nind))))
     end
     extra_args[:projects_tensors] = projects_tensors
     extra_args[:normal] = normal
@@ -56,7 +55,6 @@ function compute_als(
     for fact in 1:length(cp)
         ## grab the tensor indices for all other factors but fact
         Ris = inds(cp)[1:end .!= fact]
-        dRis = dims(Ris)
 
         ## sample the factor matrix space one taking nsamps independent samples from each
         ## tensor
@@ -67,13 +65,14 @@ function compute_als(
         
         sampled_cols = block_sample_factor_matrices(nsamps, extra_args[:factor_weights] , block_size, fact)
 
-        ## We store the rows of the flattened tensor (i.e. α) because it can be converted to factor values
-        ## or values in the vectorized tensor
-        sampled_tensor_cols = multi_coords_to_column(dRis, sampled_cols)
-        piv_ind = Index(length(sampled_tensor_cols), "selector_$(fact)")
+        ## We store the tensor-wise indices because storing the column position or the vectorized step position (α) 
+        ## because this value is limited by dim(Ris) which can overflow int64
+        nind = Index(length(Ris))
+        piv_ind = Index(nsamps, "selector_$(fact)")
 
         ## make the canonical pivot tensor. This list of pivots will be overwritten each ALS iteration
-        push!(projects_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
+        # push!(projects_tensors, itensor(tensor(Diag(sampled_tensor_cols), (Ris..., piv_ind))))
+        push!(projects_tensors, itensor(tensor(Dense(sampled_cols), (piv_ind, nind))))
     end
     ## Notice the pivot tensor is actually a low rank tensor it stores the diagonal pivot values
     ## in α form (rows of the matricized tensor) and the indices which are captured in the pivot.

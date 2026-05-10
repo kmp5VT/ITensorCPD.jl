@@ -1,5 +1,5 @@
 using LinearAlgebra: ColumnNorm, diagm
-using ITensors.NDTensors:Diag
+using ITensors.NDTensors: Dense
 using ITensors: tags
 
 struct ALS <: CPDOptimizer
