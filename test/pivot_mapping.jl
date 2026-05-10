@@ -62,7 +62,6 @@ using ITensorCPD: column_to_multi_coords
 
     p = [x for x in 1:100*150]
     l = Index(length(p), "Piv")
-    # P = itensor(NDTensors.tensor(Diag(p), (i,j,l,)))
 
     pivs = ITensorCPD.column_to_multi_coords(p, dims((i,j)))
     sampled_had = Array{eltype(B)}(undef, (dim(l), dim(m)))
@@ -95,7 +94,6 @@ using ITensorCPD: column_to_multi_coords
     pivs = ITensorCPD.column_to_multi_coords(p, dims((i,j,k)))
 
     P = itensor(Int, pivs, l, Index(3))
-    #P = itensor(NDTensors.tensor(Diag(p), (i,j,k,l,)))
 
     sampled_had = Array{eltype(B)}(undef, (dim(l), dim(m)))
     for i in 1:dim(l)
