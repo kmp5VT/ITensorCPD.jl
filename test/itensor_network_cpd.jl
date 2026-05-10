@@ -68,7 +68,7 @@ rng = Random.seed!(Random.RandomDevice())
     opt = nothing
     while check.final_fit < 0.9
         try
-        opt = ITensorCPD.decompose(subtn, Index(2, "rank"); check, verbose = true, rng);
+        opt = ITensorCPD.decompose(subtn, Index(2, "rank"); check, verbose = false, rng);
         fit = check.final_fit
         bestfit = fit > bestfit ? fit : bestfit
         catch
