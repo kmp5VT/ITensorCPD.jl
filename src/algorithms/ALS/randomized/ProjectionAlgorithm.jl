@@ -38,6 +38,9 @@ abstract type ProjectionAlgorithm end
             if verbose
                 cpd = CPD{ITensor}(factors, λ)
                 krpproj = had_contract(factors[1], λ, cprank) * compute_krp(als.mttkrp_alg, als, factors, cpd, cprank, 1)
+                if haskey(als.additional_items, :unit_transforms)
+                    krpproj = noprime(als.additional_items[:unit_transforms][1] * krpproj)
+                end
                 tproj =  matricize_tensor(als.mttkrp_alg, als, factors, cpd, cprank, 1)
 
                 cpfit = one(real(eltype(krpproj))) - norm(tproj - krpproj) / norm(tproj)
@@ -64,5 +67,9 @@ abstract type ProjectionAlgorithm end
             direction = ldiv_solve!!(expose(array(projected_KRP)), expose(transpose(array(project_target)));factorizeA=true)
         end
         i = ind(project_target, 1)
+        if haskey(als.additional_items, :unit_transforms)
+            pos = findfirst(x-> x==i, inds(als.target))
+            return noprime(als.additional_items[:unit_transforms][pos] * itensor(copy(transpose(direction)), i', rank))
+        end
         return itensor(copy(transpose(direction)), i,rank)
     end

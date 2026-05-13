@@ -161,6 +161,9 @@ const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected, KSEQRCSPivPr
     function matricize_tensor(::PivotBasedSolvers, als, factors, cp, rank::Index, fact::Int)
         ## This computes the projected MTTKRP
         # return als.additional_items[:target_transform][fact] *  ITensorCPD.pivot_hadamard(dag.(factors[1:end .!= fact]), rank, als.additional_items[:projects_tensors][fact])
+        if haskey(als.additional_items,:unit_transforms)
+            return noprime(als.additional_items[:unit_transforms][fact] * als.additional_items[:target_transform][fact])
+        end
         return @inbounds als.additional_items[:target_transform][fact]
     end
 

@@ -41,12 +41,20 @@ end
     end
 
     function matricize_tensor(::LevScoreSampled, ::Val{false}, als, factors, cp, rank::Index, fact::Int)
-            return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
+        if haskey(als.additional_items,:unit_transforms)
+            return noprime(als.additional_items[:unit_transforms][fact] * 
+            fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact]))
+        end
+        return fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
     end
 
     function matricize_tensor(::LevScoreSampled, ::Val{true}, als, factors, cp, rank::Index, fact::Int)
         if als.check.iter ≤  als.additional_items[:stop_resample]
             als.additional_items[:sampled_targets][fact] = fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
+        end
+
+        if haskey(als.additional_items,:unit_transforms)
+            return noprime(als.additional_items[:unit_transforms][fact] * als.additional_items[:sampled_targets][fact])
         end
 
         return @inbounds als.additional_items[:sampled_targets][fact]
