@@ -42,7 +42,7 @@ function compute_als(
     maxiter = nothing,
     kwargs...
 )
-    alg = isnothing(alg) ? direct() : alg
+    alg = isnothing(alg) ? KRPFreeNormal() : alg
     extra_args = Dict();
     check = isnothing(check) ? NoCheck(isnothing(maxiter) ? 100 : maxiter) : check
     mttkrp_contract_sequences = Vector{Union{Any,Nothing}}()
