@@ -13,6 +13,7 @@ function check_converge(check::NoCheck, factors, λ, partial_gram; verbose = fal
         println("$(dim(rank))\t $(check.iter)")
     end
     if check.iter == check.max_counter
+        check.iter = 0
         return true
     end
     return false
