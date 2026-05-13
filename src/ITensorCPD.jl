@@ -11,7 +11,7 @@ module ITensorCPD
   include("algebra/ldiv_solve.jl")
 
   include("cpd.jl")
-  include("algorithms.jl")
+  include("algorithms/algorithms.jl")
   include("optimizers/cpd_optimizers.jl")
   
   include("decompose.jl")

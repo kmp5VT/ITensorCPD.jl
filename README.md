@@ -134,15 +134,15 @@ Currently the library only supports the ALS optimization of tensors and tensor n
 However, the library does support a variety of ALS strategies. The ALS strategy can be modified using the keyword `alg`.
 At the moment the names for these algorithms are under development so please note that they may change in the future to improve the codes readability.
 The most popular ALS algorithm is via the normal equation. This optimizes factors by updating each factor using the gradient of the following loss function `f = 1/2 || T - Tcp ||^2`.
-In the library, there are two algorithms to compute the normal equation `KRP` and `direct`. `KRP` computes the full Khatri-Rao product (KRP) in the construction of the normal equation and `direct` uses tensor products to avoid forming the KRP.
+In the library, there are two algorithms to compute the normal equation `KRPNormal` and `KRPFreeNormal`. `KRP` computes the full Khatri-Rao product (KRP) in the construction of the normal equation and `KRPFreeNormal` uses tensor products to avoid forming the KRP.
 ```julia
 # Form an algorithm
-julia> alg = ITensorCPD.KRP()
+julia> alg = ITensorCPD.KRPNormal()
 julia> cpd = ITensorCPD.decompose(T, 50; alg);
 ## Decomposes the 99% accuracy in 23.991 ms 
 
 # Change the algorithm to direct
-julia> alg = ITensorCPD.direct() 
+julia> alg = ITensorCPD.KRPFreeNormal() 
 julia> cpd = ITensorCPD.decompose(T, 50; alg);
 ## Decomposes the 99% accuracy in 34.609 ms
 ```
