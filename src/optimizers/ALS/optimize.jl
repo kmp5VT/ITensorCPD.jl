@@ -5,7 +5,7 @@
 ## [out] A CPD object with optmiized ALS factors
 function optimize(cp::CPD, als::ALS; verbose = false)
     rank = cp_rank(cp)
-    iter = 0
+    iter = als.check.iter
 
     λ = deepcopy(cp.λ)
     factors = deepcopy(cp.factors)
