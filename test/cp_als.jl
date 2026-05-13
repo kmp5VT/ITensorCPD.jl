@@ -27,19 +27,19 @@
 
     cp_A = random_CPD(A, r)
     ## Optimize with one input
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP());
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPNormal());
     @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-7
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP(), check = ITensorCPD.NoCheck(10))
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPNormal(), check = ITensorCPD.NoCheck(10))
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-1
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP(), check)
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPNormal(), check)
     @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct())
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPFreeNormal())
     @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-7
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose);
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPFreeNormal(), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 1e-5
 
     svd_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.TargetDecomp(), check);
@@ -81,19 +81,19 @@ end
     @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-5
 
     ## Optimize with one input
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP())
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPNormal())
     @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-5
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP(), check = ITensorCPD.NoCheck(10))
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPNormal(), check = ITensorCPD.NoCheck(10))
     @test norm(reconstruct(opt_A) - A) / norm(A) < 1e-1
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRP(), check)
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPNormal(), check)
     @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 5e-5
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct())
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPFreeNormal())
     @test norm(reconstruct(opt_A) - A) / norm(A) < 5e-5
 
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check)
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPFreeNormal(), check)
     @test norm(ITensorCPD.reconstruct(opt_A) - A) / norm(A) < 5e-5
 
     direct_inversion_opt_A = als_optimize(A, cp_A; alg = ITensorCPD.InvKRP(), check, verbose);

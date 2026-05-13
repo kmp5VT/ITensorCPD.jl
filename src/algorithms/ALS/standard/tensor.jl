@@ -7,9 +7,9 @@ using ITensors.NDTensors.Expose: expose
 ## contracts it with the target tensor. This is relatively expensive because the KRP will be
 ## order $d - 1$ where d is the number of modes in the target tensor.
 ## This process could be distributed.
-struct KRP <: MttkrpAlgorithm end
+struct KRPNormal <: MttkrpAlgorithm end
 
-    function matricize_tensor(::KRP, als, factors, cp, rank::Index, fact::Int)
+    function matricize_tensor(::KRPNormal, als, factors, cp, rank::Index, fact::Int)
 
         factor_portion = @view factors[1:end .!= fact]
         sequence = ITensors.default_sequence()
@@ -19,7 +19,7 @@ struct KRP <: MttkrpAlgorithm end
         return m
     end
 
-    function post_solve(::KRP, als, factors, λ, cp, rank::Index, fact::Integer)
+    function post_solve(::KRPNormal, als, factors, λ, cp, rank::Index, fact::Integer)
         als.additional_items[:part_grammian][fact] =
             factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
     end
@@ -27,9 +27,9 @@ struct KRP <: MttkrpAlgorithm end
 ## This code skips computing the khatri-rao product by incrementally 
 ## contracting the factor matrices into the tensor for each value of r
 ## This process could be distributed.
-struct direct <: MttkrpAlgorithm end
+struct KRPFreeNormal <: MttkrpAlgorithm end
 
-    function matricize_tensor(::direct, als, factors, cp, rank::Index, fact::Int)
+    function matricize_tensor(::KRPFreeNormal, als, factors, cp, rank::Index, fact::Int)
         factor_portion = @view factors[1:end .!= fact]
         if isnothing(als.additional_items[:mttkrp_contract_sequences][fact])
             als.additional_items[:mttkrp_contract_sequences][fact] =
@@ -43,7 +43,7 @@ struct direct <: MttkrpAlgorithm end
         return m
     end
 
-    function post_solve(::direct, als, factors, λ, cp, rank::Index, fact::Integer) 
+    function post_solve(::KRPFreeNormal, als, factors, λ, cp, rank::Index, fact::Integer) 
         als.additional_items[:part_grammian][fact] .=
             factors[fact] * dag(prime(factors[fact]; tags = tags(rank)))
     end

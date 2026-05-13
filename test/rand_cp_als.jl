@@ -21,7 +21,7 @@
     ITensorCPD.optimize(cp_A, als; verbose);
     
     ## Reference optimization
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check, verbose);
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPFreeNormal(), check, verbose);
 
     int_opt_A =
        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose, shuffle_pivots=true, trunc_tol=0.001);
@@ -162,7 +162,7 @@ end
 
     ## This method uses the interpolative squared to precondition the problem.
     check = ITensorCPD.FitCheck(1e-6, 100, norm(A))
-    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.direct(), check)
+    opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPFreeNormal(), check)
     int_opt_A =
        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(), check, verbose);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
