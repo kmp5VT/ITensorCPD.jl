@@ -79,12 +79,12 @@ end
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(200), check, verbose=true);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(200), check, verbose);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
     als = ITensorCPD.compute_als(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (200, 200, 200), (1,2,3), 10), check);
 
-    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (200, 200, 200), (1,2,3), 5), check, verbose=true)
+    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (200, 200, 200), (1,2,3), 5), check, verbose)
 
     @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (200, 200, 200), (1,2,3), 5), check,
         normal=false)
