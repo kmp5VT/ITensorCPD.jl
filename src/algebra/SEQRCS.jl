@@ -190,14 +190,13 @@ function SEQRCS(krp::Vector{ITensor},i,l,s,t; compute_r=true, use_omega=false, i
     ## TODO remove the need for full omega, use efficient representation.
     omega = sparse_sign_matrix(l,n,s, Array{Int32}(undef, n * s), Array{Float64}(undef, n * s); omega=true,injective=injective)
 
+
     # Sketch the matrix and applying QR 
     A_sk = omega_hadamard(krp, cprank, omega)
     println("The size of A_sk is $(size(A_sk))")
     
     _, _, p_sk = qr!(copy(array(A_sk)'), ColumnNorm())  
     
-    ## TODO working here. This can be threadwise parallelized which
-    ## Will help with the cost. 
     indices = Vector{Int}()
     p_sk=p_sk[1:t]
 
@@ -207,6 +206,8 @@ function SEQRCS(krp::Vector{ITensor},i,l,s,t; compute_r=true, use_omega=false, i
     omega = nothing;
     indices = findall(col -> any(!=(0), col), eachcol(rows_sel))
     indices_ind = Index(length(indices),"ind")
+    indices_tensor = itensor(Int, column_to_multi_coords(indices, dims(Ris)), (indices_ind, Index(length(Ris))))
+    
     println("The size of A_subset is $(length(indices))")
 
     ## Perform QR on A_subset to get final 'k' pivots
@@ -215,10 +216,9 @@ function SEQRCS(krp::Vector{ITensor},i,l,s,t; compute_r=true, use_omega=false, i
     # mode = length(inds(A))
     # Q, R, p_subset = qr!(array(fused_flatten_sample(A, mode, indices_tensor)), ColumnNorm()) 
 
-    indices_tensor = itensor(tensor(Diag(indices), (Ris..., indices_ind)))
     ## TODO is there a way to lazy permute?
-    Q, R, p_subset = qr!(copy(array(pivot_hadamard(krp, ind(krp[1], 2), indices_tensor))'), ColumnNorm())
-    
+    ffkrpn = array(pivot_hadamard(krp, i, indices_tensor))
+    Q, R, p_subset = qr!(ffkrpn', ColumnNorm())
     rem_indices = setdiff(1:n,indices)
     p = vcat(indices[p_subset],rem_indices)
 
