@@ -309,6 +309,7 @@ function omega_hadamard(tensors, had::Index, omega)
 
     dis = dim.(is)
     omega_slice = eachrow(omega)
+    
     ## When I create an iterator over eachrow, the total number of sampled cols goes down and the
     ## Error in the QR changes marginally. Not sure why so not going to do this step now.
     for (j, os) in zip(1:l, omega_slice)
@@ -318,9 +319,9 @@ function omega_hadamard(tensors, had::Index, omega)
         kr_prod = ones(eltype(tensors[1]), size(npivs,1), dim(had))
         signs = os[nnz_ind]
         for (tensor, i) in zip(tensors, eachcol(npivs))
-            kr_prod .*= (@view array(tensor)[i, :]) .* signs[:,]
+            kr_prod .*= (@view array(tensor)[i, :])
         end
-        s_prod[j,:] = sum(kr_prod, dims=1)
+        s_prod[j,:] = sum(kr_prod .* signs[:,], dims=1)
         #sslice = sum(kr_prod, dims=1)
     end
 

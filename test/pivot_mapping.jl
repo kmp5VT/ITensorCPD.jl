@@ -134,7 +134,26 @@ using ITensorCPD: column_to_multi_coords
 
     oh = ITensorCPD.omega_hadamard(cpd.factors[1:end .!=2], cprank, omega)
     exact_had = ITensorCPD.had_contract(cpd.factors[1:end .!= 2], cprank)
-    (omega * reshape(array(exact_had), (3 * 8 * 2, 10)))
     
-    @test_broken norm(array(oh)' - reshape(array(exact_had), (3 * 8 * 2, 10))' * omega') < 1e-12
+    @test norm(array(oh)' - reshape(array(exact_had), (3 * 8 * 2, 10))' * omega') < 1e-12
+
+    A = random_itensor(Index(rand(1:200)), cprank)
+    B = random_itensor(Index(rand(2:200)), cprank)
+
+    ia = dim(A, 1)
+    ib = dim(B, 1)
+
+    n = ia * ib
+    m = dim(cprank)
+    l=Int(round(3 * m * log(m)))
+    s=Int(round(log(m)))
+    vals = Array{Float64}(undef, n * s)
+    rows = Array{Int32}(undef, n * s)
+    omega = ITensorCPD.sparse_sign_matrix(l,n,s, rows, vals; omega=true,injective=false);
+
+    krp = ITensorCPD.had_contract(A,B,cprank)
+    krpm = reshape(array(krp), (ia*ib, m))
+    omega * krpm
+    oh = ITensorCPD.omega_hadamard([A,B], cprank, omega)
+    @test all(array(oh) - omega * krpm .< 1e-10)
 end
