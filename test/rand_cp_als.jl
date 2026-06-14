@@ -4,7 +4,7 @@ function multiple_tries(A, cp_A, exact_error; KWARGS...)
            int_opt_A =
             als_optimize(A, cp_A; KWARGS...);
             passed = abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1 
-            return true
+            return passed
         catch
             if i == 10
                 return false
@@ -79,21 +79,21 @@ end
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(1200), check, verbose);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
-    # als = ITensorCPD.compute_als(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 10), check);
+    als = ITensorCPD.compute_als(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1), (1200,), (1,2,3), 10), check);
 
-    # @test_broken multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 5), check)
+    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1), (1200,), (1,2,3), 5), check, verbose)
 
-    # @test_broken multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 5), check,
-    #     normal=false)
+    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1), (1200,), (1,2,3), 5), check,
+        normal=false)
     
-    # @test_broken multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 5), check,
-    #     normal=false, injective=true, verbose)
+    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1), (1200,), (1,2,3), 5), check,
+        normal=false, injective=true, verbose)
 
-    # @test_broken multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 5), check,
-    #     normal=true, injective=true, verbose)
+    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1), (1200,), (1,2,3), 5), check,
+        normal=true, injective=true, verbose)
 
     ### Test for Leverage score sampling CPD 
     a,b,c = Index.((12,13,3))
@@ -117,7 +117,7 @@ end
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
-    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose=true, stop_resample=0);
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose, stop_resample=0);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
     ### Test for Leverage score sampling CPD 
@@ -182,25 +182,25 @@ end
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
           norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 
-    ## KSEQRCS gets the right answer no problem
-    # int_opt_A =
-    #     als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check);
-    # @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+    # KSEQRCS gets the right answer no problem
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
 
-    # int_opt_A =
-    #     als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
-    #     normal=false);
-    # @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
     
-    # int_opt_A =
-    #     als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
-    #     normal=false, injective=true);
-    # @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false, injective=true);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
 
-    # int_opt_A =
-    #     als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
-    #     normal=false, injective=true);
-    # @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
+    int_opt_A =
+        als_optimize(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (400), (1,2,3), 1), check,
+        normal=false, injective=true);
+    @test norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A) < 1e-3
 
     ## This tests to see if we can interpolate a known low rank tensor
     A = ITensorCPD.reconstruct(random_CPD(A, 20))
