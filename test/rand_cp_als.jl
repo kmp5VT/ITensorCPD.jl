@@ -13,7 +13,7 @@ function multiple_tries(A, cp_A, exact_error; KWARGS...)
     end
 end
 
-# @testset "Random CPD-ALS, elt=$elt" for elt in [Float64, ComplexF64]
+@testset "Random CPD-ALS, elt=$elt" for elt in [Float64, ComplexF64]
     verbose = false
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
