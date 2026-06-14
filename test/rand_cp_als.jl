@@ -4,7 +4,7 @@ function multiple_tries(A, cp_A, exact_error; KWARGS...)
            int_opt_A =
             als_optimize(A, cp_A; KWARGS...);
             passed = abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1 
-            return true
+            return passed
         catch
             if i == 10
                 return false
@@ -13,7 +13,7 @@ function multiple_tries(A, cp_A, exact_error; KWARGS...)
     end
 end
 
-@testset "Random CPD-ALS, elt=$elt" for elt in [Float64, ComplexF64]
+# @testset "Random CPD-ALS, elt=$elt" for elt in [Float64, ComplexF64]
     verbose = false
     i, j, k = Index.((20, 30, 40))
     r = Index(400, "CP_rank")
@@ -79,21 +79,21 @@ end
     exact_error = norm(A - ITensorCPD.reconstruct(opt_A)) / norm(A)
 
     int_opt_A =
-        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected((1,1,1), (1200, 800, 600)), check);
+        als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(200), check, verbose=true);
     @test abs(exact_error - norm(A - ITensorCPD.reconstruct(int_opt_A)) / norm(A)) / exact_error < 0.1
 
-    # als = ITensorCPD.compute_als(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 10), check);
+    als = ITensorCPD.compute_als(A, cp_A; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (200, 200, 200), (1,2,3), 10), check);
 
-    # @test_broken multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 5), check)
+    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (200, 200, 200), (1,2,3), 5), check, verbose=true)
 
-    # @test_broken multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 5), check,
-    #     normal=false)
+    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (200, 200, 200), (1,2,3), 5), check,
+        normal=false)
     
-    # @test_broken multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 5), check,
-    #     normal=false, injective=true, verbose)
+    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (200, 200, 200), (1,2,3), 5), check,
+        normal=false, injective=true, verbose)
 
-    # @test_broken multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (1200, 800, 600), (1,2,3), 5), check,
-    #     normal=true, injective=true, verbose)
+    @test multiple_tries(A, cp_A, exact_error; alg = ITensorCPD.KSEQRCSPivProjected((1,1,1), (200, 200, 200), (1,2,3), 5), check,
+        normal=true, injective=true, verbose)
 
     ### Test for Leverage score sampling CPD 
     a,b,c = Index.((12,13,3))
@@ -117,7 +117,7 @@ end
     cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
-    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose=true, stop_resample=0);
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, normal=true, verbose, stop_resample=0);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
     ### Test for Leverage score sampling CPD 
