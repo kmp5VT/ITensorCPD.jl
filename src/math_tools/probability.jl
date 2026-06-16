@@ -1,6 +1,6 @@
 using LinearAlgebra, StatsBase
 using ITensors: Index
-function compute_leverage_score_probabilitiy(A, row::Index; use_variance=true)
+function compute_leverage_score_probabilitiy(A, row::Index; use_variance=true, eps = 0.01)
   ## This only works on matrices for now.
   @assert ndims(A) == 2
   posrow = findall(i-> i!=row, inds(A))
@@ -11,7 +11,7 @@ function compute_leverage_score_probabilitiy(A, row::Index; use_variance=true)
   rd = diag(r).^2
   rd = rd ./ sum(rd)
   rd ./= maximum(rd)
-  k = max(sum(rd .>= 0.01), 1)
+  k = max(sum(rd .>= eps), 1)
   q = copy(q)
   q = q .* conj(q)
   ni = size(q)[1]
