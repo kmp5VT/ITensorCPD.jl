@@ -20,7 +20,8 @@ function compute_leverage_score_probabilitiy(A, row::Index; use_variance=true)
     return [real(sum(array(q)[i,1:k]))  for i in 1:ni] ./ k
   end
 
-  return [real(sum(array(q)[i,1:end]))  for i in 1:ni]  ./ minimum(dims(A))
+  mn = minimum(dims(A))
+  return [real(sum(array(q)[i,1:mn]))  for i in 1:ni]  ./ mn
 end
 
 function samples_from_probability_vector(PW::Vector, samples)
