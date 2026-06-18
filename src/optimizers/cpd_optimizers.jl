@@ -1,5 +1,5 @@
 abstract type CPDOptimizer end
 
 ## ALS optimizers
-include("als/als_optimizer.jl")
-include("als/optimize.jl")
+include("ALS/als_optimizer.jl")
+include("ALS/optimize.jl")
