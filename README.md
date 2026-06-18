@@ -163,3 +163,5 @@ We are currently working on improving the API for these contractions.
 
 The library is flexible and is it possible to implement custom ALS algorithms, convergence checking algorithms and optimizers which can be picked up seemlessly via Julia's multiple dispatch system.
 Please refer to library API for references on custom algorithms and please feel free to contribute to the library.
+
+Subject to Apache License, Version 2.0.
