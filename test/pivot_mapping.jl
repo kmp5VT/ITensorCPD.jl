@@ -155,5 +155,5 @@ using ITensorCPD: column_to_multi_coords
     krpm = reshape(array(krp), (ia*ib, m))
     omega * krpm
     oh = ITensorCPD.omega_hadamard([A,B], cprank, omega)
-    @test all(array(oh) - omega * krpm .< 1e-10)
+    @test norm(array(oh) - omega * krpm) / norm(omega * krpm) < 1e-10
 end
