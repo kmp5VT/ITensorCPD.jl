@@ -1,1 +1,1 @@
-include("ALS/als_algs.jl")
+include("als_algorithms/als_algs.jl")
