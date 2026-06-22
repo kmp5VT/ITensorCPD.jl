@@ -45,7 +45,7 @@ end
     end
 
     function matricize_tensor(::LevScoreSampled, ::Val{true}, als, factors, cp, rank::Index, fact::Int)
-        if als.check.iter ≤  als.additional_items[:stop_resample]
+        if als.check.iter <  als.additional_items[:stop_resample] || !isassigned(als.additional_items[:sampled_targets], fact)
             als.additional_items[:sampled_targets][fact] = fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
         end
 
