@@ -15,7 +15,7 @@
     @test_throws TypeError ITensorCPD.decompose(A, 400; solver = A)
 
     check = ITensorCPD.FitCheck(1e-6, 100, norm(A))
-    opt_A = ITensorCPD.decompose(A, 400; check, verbose);
+    opt_A = ITensorCPD.decompose(A, 400; check, verbose=true, normalize=false);
     @test norm(A - reconstruct(opt_A)) / norm(A) < 1e-5
 
     ## Build a random guess

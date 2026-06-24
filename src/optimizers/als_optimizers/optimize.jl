@@ -8,10 +8,13 @@ function optimize(cp::CPD, als::ALS; verbose = false)
     iter = als.check.iter
 
     λ = deepcopy(cp.λ)
+    fill!(λ, one(eltype(λ)))
+
     factors = deepcopy(cp.factors)
     num_factors = length(cp.factors)
     
     converge = als.check
+    normalize = als.additional_items[:normalize]
     while iter < converge.max_counter
         mtkrp = nothing
         for (fact, target_ind) in zip(1:num_factors, inds(cp))
@@ -22,7 +25,11 @@ function optimize(cp::CPD, als::ALS; verbose = false)
 
             solution = solve_ls_problem(als.mttkrp_alg, als, krp, mtkrp, rank)
             
-            factors[fact], λ = row_norm(solution, target_ind)
+            if normalize
+                factors[fact], λ = row_norm(solution, target_ind)
+            else
+                factors[fact] = solution
+            end
 
             post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
         end
