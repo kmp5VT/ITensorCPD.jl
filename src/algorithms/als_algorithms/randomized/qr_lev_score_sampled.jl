@@ -144,6 +144,7 @@ const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected, KSEQRCSPivPr
         :qr_factors => als.additional_items[:qr_factors],
         :effective_ranks => als.additional_items[:effective_ranks],
         :normal => als.additional_items[:normal],
+        :normalize => als.additional_items[:normalize],
         )
         return ALS(als.target, updated_alg, extra_args, als.check)
     end

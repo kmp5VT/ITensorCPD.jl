@@ -40,6 +40,7 @@ function compute_als(
     alg = nothing,
     check = nothing,
     maxiter = nothing,
+    normalize = true,
     kwargs...
 )
     alg = isnothing(alg) ? KRPFreeNormal() : alg
@@ -50,6 +51,7 @@ function compute_als(
         push!(mttkrp_contract_sequences, nothing)
     end
     extra_args[:mttkrp_contract_sequences] = mttkrp_contract_sequences
+    extra_args[:normalize] = normalize
     cprank = cp_rank(cp)
     return compute_als(alg, target, cp; extra_args, check, kwargs...)
 end

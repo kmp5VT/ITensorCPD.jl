@@ -39,7 +39,7 @@ end
     opt_A = als_optimize(A, cp_A; alg = ITensorCPD.KRPFreeNormal(), check, verbose);
 
     int_opt_A =
-       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose, shuffle_pivots=true, trunc_tol=0.001);
+       als_optimize(A, cp_A; alg = ITensorCPD.QRPivProjected(800), check, verbose=true, shuffle_pivots=true, trunc_tol=0.001, normalize=false);
     @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
@@ -49,7 +49,7 @@ end
          norm(ITensorCPD.reconstruct(opt_A)) < 1e-2
 
     alg = ITensorCPD.SEQRCSPivProjected(1, 800, (1,2,3),(100,100,100))
-    als = ITensorCPD.compute_als(A, cp_A; alg, check);
+    als = ITensorCPD.compute_als(A, cp_A; alg, check, normalize=false);
     
     als = ITensorCPD.update_samples(A, als, 600; reshuffle = true);
     @test ITensorCPD.stop(als.mttkrp_alg) == 600
@@ -65,7 +65,7 @@ end
 
     int_opt_A =
           als_optimize(A, cp_A; alg = ITensorCPD.SEQRCSPivProjected((1,), (800,), (1,2,3),(20,20,20)),
-          check, verbose, shuffle_pivots=true, normal =false ,injective = true);
+          check, verbose, shuffle_pivots=true, normal =false ,injective = true, normalize=false);
       @test norm(ITensorCPD.reconstruct(opt_A) - ITensorCPD.reconstruct(int_opt_A)) /
             norm(ITensorCPD.reconstruct(opt_A)) < 1e-1
 
@@ -109,7 +109,7 @@ end
 
     alg = ITensorCPD.LevScoreSampled(100)
     check = ITensorCPD.CPAngleCheck(1e-5, 10)
-    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose);
+    cpd_opt = ITensorCPD.als_optimize(T, cpd; alg, check, verbose, normalize=false);
     @test norm(reconstruct(cpd_opt) - T) / norm(T) < 0.1
 
     alg = ITensorCPD.LevScoreSampled(100)
