@@ -6,7 +6,7 @@ function row_norm(t::ITensor, i...)
     dataT = NDTensors.datatype(t)
     λ = hadamard_product(t, t)
     for is in tuple(i...)
-        d = itensor(NDTensors.Diag(dataT(ones(Float32, dim(is)))), is)
+        d = itensor(NDTensors.Diag(dataT(ones(elt, dim(is)))), is)
         λ = λ * d
     end
     map!(i -> sqrt(i), data(λ), data(λ))

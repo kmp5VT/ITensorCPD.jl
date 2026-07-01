@@ -45,7 +45,7 @@ end
     end
 
     function matricize_tensor(::LevScoreSampled, ::Val{true}, als, factors, cp, rank::Index, fact::Int)
-        if als.check.iter ≤  als.additional_items[:stop_resample]
+        if als.check.iter <  als.additional_items[:stop_resample] || !isassigned(als.additional_items[:sampled_targets], fact)
             als.additional_items[:sampled_targets][fact] = fused_flatten_sample(als.target, fact, als.additional_items[:projects_tensors][fact])
         end
 
@@ -54,7 +54,7 @@ end
 
     function post_solve(::LevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
         ## update the factor weights.
-        @inbounds als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact))
+        @inbounds als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact); use_variance = als.additional_items[:variance_truncation])
     end
 
 ### With this solver we are going to compute sampling projectors for LS decomposition
@@ -104,6 +104,6 @@ end
 
     function post_solve(::BlockLevScoreSampled, als, factors, λ, cp, rank::Index, fact::Integer) 
     ## update the factor weights.
-        als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact))
+        als.additional_items[:factor_weights][fact] = compute_leverage_score_probabilitiy(factors[fact], ind(cp, fact); use_variance = als.additional_items[:variance_truncation])
     end
 

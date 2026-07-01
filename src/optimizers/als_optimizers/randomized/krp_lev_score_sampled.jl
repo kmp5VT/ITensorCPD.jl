@@ -7,10 +7,11 @@ function compute_als(
     normal=false,
     stop_resample=-1,
     cache_sampled_targets=true,
+    variance_truncation = true,
     kwargs...
 )
     ## For each factor matrix compute its weights
-    extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
+    extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i); use_variance = variance_truncation) for i in 1:length(cp)]
     projects_tensors = Vector{ITensor}()
     cache_sampled_targets = (stop_resample == -1 ? false : cache_sampled_targets)
     for fact in 1:length(cp)
@@ -36,6 +37,7 @@ function compute_als(
     extra_args[:stop_resample] = stop_resample
     extra_args[:sampled_targets] = Vector{ITensor}(undef, ndims(target))
     extra_args[:cache_sampled_targets] = cache_sampled_targets
+    extra_args[:variance_truncation] = variance_truncation
     return ALS(target, alg, extra_args, check)
 end
 
@@ -47,11 +49,14 @@ function compute_als(
     check = nothing,
     normal=false,
     stop_resample=-1,
+    cache_sampled_targets=true,
+    variance_truncation = true,
     kwargs...
 )
     ## For each factor matrix compute its weights
-    extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i)) for i in 1:length(cp)]
+    extra_args[:factor_weights] = [compute_leverage_score_probabilitiy(cp[i], ind(cp, i);  use_variance = variance_truncation) for i in 1:length(cp)]
     projects_tensors = Vector{ITensor}()
+    cache_sampled_targets = (stop_resample == -1 ? false : cache_sampled_targets)
     for fact in 1:length(cp)
         ## grab the tensor indices for all other factors but fact
         Ris = inds(cp)[1:end .!= fact]
@@ -79,5 +84,7 @@ function compute_als(
     extra_args[:projects_tensors] = projects_tensors
     extra_args[:normal] = normal
     extra_args[:stop_resample] = stop_resample
+    extra_args[:cache_sampled_targets] = cache_sampled_targets
+    extra_args[:variance_truncation] = variance_truncation
     return ALS(target, alg, extra_args, check)
 end
