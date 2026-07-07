@@ -37,5 +37,5 @@ abstract type MttkrpAlgorithm end
         #solution = array(dag(krp)) \ transpose(array(mtkrp))
         solution = ldiv_solve!!(expose(array(dag(krp))), expose(transpose(array(mtkrp))); factorizeA = true)
         i = ind(mtkrp, 1)
-        return itensor(copy(transpose(solution)), i,rank)
+        return itensor(copy(transpose(solution)), i,rank), ones(eltype(solution), dim(rank))
     end

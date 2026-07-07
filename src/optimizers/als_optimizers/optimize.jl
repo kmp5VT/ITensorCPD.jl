@@ -20,9 +20,11 @@ function optimize(cp::CPD, als::ALS; verbose = false)
 
             mtkrp = matricize_tensor(als.mttkrp_alg, als, factors, cp, rank, fact)
 
-            solution = solve_ls_problem(als.mttkrp_alg, als, krp, mtkrp, rank)
+            solution, normalizers = solve_ls_problem(als.mttkrp_alg, als, krp, mtkrp, rank)
             
             factors[fact], λ = row_norm(solution, target_ind)
+
+            array(λ) .*= 1 ./ normalizers
 
             post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
         end
