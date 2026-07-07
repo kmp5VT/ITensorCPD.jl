@@ -15,7 +15,7 @@ struct InvKRP <: ProjectionAlgorithm end
 
     function solve_ls_problem(::InvKRP, _, projected_KRP, projected_target, rank)
         U, S, V = svd(dag(projected_KRP), rank; use_absolute_cutoff = true, cutoff = 0)
-        return prime(projected_target; tags = tags(rank)) * V * (1 ./ S) * U, ones(eltype(U), rank)
+        return prime(projected_target; tags = tags(rank)) * V * (1 ./ S) * U, ones(eltype(U), dim(rank))
     end
 
     function post_solve(::InvKRP, als, factors, λ, cp, rank::Index, fact::Integer) end

@@ -24,7 +24,7 @@ function optimize(cp::CPD, als::ALS; verbose = false)
             
             factors[fact], λ = row_norm(solution, target_ind)
 
-            array(λ) .*= 1 ./ normalizers
+            array(λ) .*= 1 ./ array(normalizers)
 
             post_solve(als.mttkrp_alg, als, factors, λ, cp, rank, fact)
         end
