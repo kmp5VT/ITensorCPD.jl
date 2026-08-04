@@ -105,16 +105,16 @@ const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected, KSEQRCSPivPr
         effective_ranks = als.additional_items[:effective_ranks]
         for (p,pos, projector_tensor, meff, m) in zip(ref_pivs,1:length(pivots), projectors, effective_ranks, dims(als.target))
             ## This is reshuffling the indices
+            Ris = inds(target)[1:end .!= pos]
             if reshuffle
                 p1 = p[1:meff]
                 p_rest = p[meff+1:end]
                 p2 = p_rest[randperm(length(p_rest))]
                 pshuff = vcat(p1, p2)
                 
+                pshuff = column_to_multi_coords(pshuff, dims(Ris))
                 pivots[pos] = pshuff
             end
-
-            Ris = inds(projector_tensor)[1:end-1]
 
             dRis = dim(Ris)
             int_end = stop(updated_alg)
@@ -128,8 +128,9 @@ const PivotBasedSolvers = Union{QRPivProjected, SEQRCSPivProjected, KSEQRCSPivPr
 
             ndim = int_end - int_start + 1
             piv_id = Index(ndim, "pivot")
+            nind = Index(length(Ris))
 
-            projectors[pos] =  itensor(tensor(Diag(pivots[pos][int_start:int_end]), (Ris..., piv_id)))
+            projectors[pos] = itensor(Int, pivots[pos][int_start:int_end, :], (piv_id, nind))
 
             targets[pos] = fused_flatten_sample(target, pos, projectors[pos])
         end

@@ -9,7 +9,7 @@ function compute_als(
     normal = true,
     kwargs...
 )
-    pivots = Vector{Vector{Int}}()
+    pivots = Vector{Matrix{Int}}()
     ref_pivs = Vector{Vector{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
@@ -17,7 +17,6 @@ function compute_als(
     effective_ranks = Vector{Int}()
     piv_id = nothing
     for (i, n) in zip(inds(target), 1:length(cp))
-        
         Ris = uniqueinds(target, i)
         m = dim(i)
         Tmat = reshape(array(target, (i, Ris...)), (m, dim(Ris)))
@@ -25,11 +24,9 @@ function compute_als(
         dr = diag(r)
         r = nothing
         GC.gc()
-        #meff = sum(abs.(diag(r)) .> trunc_tol)
+
         meff = sum(abs.(dr) ./ maximum(abs.(dr)) .> trunc_tol)
         push!(effective_ranks, meff)
-        
-        #q,r,p = lu(Tmat', RowMaximum(), allowsingular=true)
         
         ### QR based inital guess strategy.
         idx = Index(m, "rank")
@@ -47,6 +44,7 @@ function compute_als(
         p = vcat(p1, p2)
 
         # p = randperm(dim(Ris))
+        p = column_to_multi_coords(p, dims(Ris))
         push!(pivots, p)
 
         dRis = dim(Ris)
@@ -62,7 +60,8 @@ function compute_als(
         ndim = int_end - int_start + 1
         piv_id = Index(ndim, "pivot")
 
-        push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
+        nind = Index(length(Ris))
+        push!(projectors, itensor(tensor(Dense(p[int_start:int_end, :]), (piv_id, nind))))
         TP = fused_flatten_sample(target, n, projectors[n])
         
         push!(targets, TP)
@@ -94,7 +93,7 @@ function compute_als(
     lst = isnothing(lst) ? [] : lst
     rank_sk = rank_vect(alg)
     ref_pivs = Vector{Vector{Int}}()
-    pivots = Vector{Vector{Int}}()
+    pivots = Vector{Matrix{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
     qr_factors = Vector{AbstractArray}()
@@ -103,6 +102,7 @@ function compute_als(
     for (i, n) in zip(inds(target), 1:length(cp))
         Ris = uniqueinds(target, i)
 
+        ## TODO this will fail for large columns
         dRis = dim(Ris)
         int_end = stop(alg)
         int_end = length(int_end) == 1 ? int_end[1] : int_end[n]
@@ -120,10 +120,8 @@ function compute_als(
             ## TODO there is still a bug in this line below
             k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
             l=Int(round(3 * m * log(m)))
-            # l=Int(round(3 * m )) 
             s=Int(round(log(m)))
             q,r,p = SEQRCS(target,n,i,l,s,k_sk; compute_r = false, use_omega=false,injective = injective)
-            # p = vcat(p[1:m], p[m+1:end][randperm(end-m)])
         else
             Tmat = reshape(array(target, (i, Ris...)), (dim(i), dim(Ris)))
             q, r, p = qr(Tmat, ColumnNorm())
@@ -133,6 +131,7 @@ function compute_als(
         GC.gc()
 
         push!(ref_pivs, deepcopy(p))
+        # push!(ref_pivs, deepcopy(column_to_multi_coords(p, dims(Ris))))
 
         # meff = sum(abs.(diag(r)) ./ maximum(abs.(diag(r))) .> trunc_tol)
         meff = sum(abs.(dr) ./ maximum(abs.(dr)) .> trunc_tol)
@@ -142,6 +141,12 @@ function compute_als(
         p_rest = p[meff+1:end]
         p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
         p = vcat(p1, p2)
+
+        ## Convert P from column indices to factor wise indices
+        ## TODO right now the QR based solvers still fail for large tensors because
+        ## The column index may be out of range before this conversion. Will be working on that
+        ## problem a different time
+        p = column_to_multi_coords(p, dims(Ris))
         push!(pivots, p)
 
         ### QR based inital guess strategy.
@@ -152,8 +157,9 @@ function compute_als(
 
         ndim = int_end - int_start + 1
         piv_id = Index(ndim, "pivot")
+        nind = Index(length(Ris))
 
-        push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
+        push!(projectors, itensor(Int, p[int_start:int_end, :], (piv_id, nind)))
         TP = fused_flatten_sample(target, n, projectors[n])
         
     push!(targets, TP)
@@ -199,7 +205,7 @@ function compute_als(
     cprank = cp_rank(updated_cpd)
     rank_sk = rank_vect(alg)
     ref_pivs = Vector{Vector{Int}}()
-    pivots = Vector{Vector{Int}}()
+    pivots = Vector{Matrix{Int}}()
     projectors = Vector{ITensor}()
     targets = Vector{ITensor}()
     qr_factors = Vector{AbstractArray}()
@@ -224,7 +230,6 @@ function compute_als(
         ## very expensive. This works well so we need to figure out what size to make this variable.
         m = dim(i)
         if n in lst
-            ## TODO there is still a bug in this line below
             k_sk = isnothing(rank_sk) ? int_end : rank_sk[n]
             l=Int(round(3 * m * log(m)))
             # l=Int(round(3 * m )) 
@@ -241,6 +246,7 @@ function compute_als(
         r = nothing
         GC.gc()
 
+        # push!(ref_pivs, deepcopy(column_to_multi_coords(p, dims(Ris))))
         push!(ref_pivs, deepcopy(p))
 
         # meff = sum(abs.(diag(r)) ./ maximum(abs.(diag(r))) .> trunc_tol)
@@ -251,18 +257,14 @@ function compute_als(
         p_rest = p[meff+1:end]
         p2 = shuffle_pivots ? p_rest[randperm(length(p_rest))] : p_rest
         p = vcat(p1, p2)
+        p = column_to_multi_coords(p, dims(Ris))
         push!(pivots, p)
-
-        ### QR based inital guess strategy.
-        # idx = Index(m, "rank")
-        # qt = had_contract(itensor(copy(q), Index(m),idx), itensor(dr, idx), idx)
-        # q = array(qt)
-        # push!(qr_factors, q)
 
         ndim = int_end - int_start + 1
         piv_id = Index(ndim, "pivot")
+        nind = Index(length(Ris))
 
-        push!(projectors, itensor(tensor(Diag(p[int_start:int_end]), (Ris..., piv_id))))
+        push!(projectors, itensor(Int, p[int_start:int_end, :], (piv_id, nind)))
         TP = fused_flatten_sample(target, n, projectors[n])
         
         push!(targets, TP)

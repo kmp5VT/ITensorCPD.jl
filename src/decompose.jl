@@ -50,6 +50,7 @@ function decompose(
     check = isnothing(check) ? FitCheck(1e-3, 100, norm(A)) : check
     while true
         cpd = als_optimize(A, cpd; alg, check, maxiter, verbose, KWARGS...);
+        check.iter = 0
         if 1.0 - ITensorCPD.CPDFit(check) < epsilon
             return cpd
         else

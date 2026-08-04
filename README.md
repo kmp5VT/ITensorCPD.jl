@@ -12,8 +12,7 @@ To run this project please download the repo from github using Julia package man
 
 ```julia
 julia> using Pkg
-julia> Pkg.develop(url="https://github.com/kmp5VT/ITensorCPD.jl")
-julia> using ITensorCPD
+julia> Pkg.add("ITensorCPD")
 ```
 
 Here is a quick example to decompose a tensor 

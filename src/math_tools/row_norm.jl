@@ -1,5 +1,5 @@
 using ITensors: ITensor, hadamard_product
-using ITensors.NDTensors: NDTensors
+using ITensors.NDTensors: NDTensors, Diag
 
 function row_norm(t::ITensor, i...)
     elt = eltype(t)
