@@ -55,8 +55,7 @@ abstract type ProjectionAlgorithm end
 
     ## Default algorithm uses the pivoted QR to solve LS problem.
     function solve_ls_problem(::ProjectionAlgorithm, als, projected_KRP, project_target, rank)
-        # direction = qr(array(projected_KRP * prime(projected_KRP, tags=tags(rank))), ColumnNorm()) \ transpose(array(project_target * projected_KRP))
-        #direction = qr(array(projected_KRP), ColumnNorm()) \ transpose(array(project_target))
+        projected_KRP, normalizers = row_norm(projected_KRP, ind(projected_KRP, 1))
         direction = nothing
         if als.additional_items[:normal]
             direction = ldiv_solve!!(expose(array(dag(projected_KRP * prime(dag(projected_KRP); tags=tags(rank))))), expose(transpose(array(project_target * prime(dag(projected_KRP); tags=tags(rank)))));factorizeA=true) 
@@ -64,5 +63,5 @@ abstract type ProjectionAlgorithm end
             direction = ldiv_solve!!(expose(array(projected_KRP)), expose(transpose(array(project_target)));factorizeA=true)
         end
         i = ind(project_target, 1)
-        return itensor(copy(transpose(direction)), i,rank)
+        return itensor(copy(transpose(direction)), i,rank), normalizers
     end

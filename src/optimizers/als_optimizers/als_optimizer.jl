@@ -31,6 +31,19 @@ include("randomized/qr_lev_score_sampled.jl")
 include("randomized/krp_lev_score_sampled.jl")
 include("randomized/sketched_ls.jl")
 
+### Default ALS constructor algorithm for Arrays which converts to tensors. 
+### This will develop the "optimization sequence" variable
+### and then pass along to more specialized constructors
+function compute_als(
+    target::AbstractArray,
+    cp::CPD{<:ITensor};
+    kwargs...
+)
+    @assert ndims(target) == ndims(cp)
+
+    return compute_als(itensor(target, inds(cp)), cp; kwargs...)
+end
+
 ### Default ALS constructor algorithm for Tensors (versus tensor networks). 
 ### This will develop the "optimization sequence" variable
 ### and then pass along to more specialized constructors
