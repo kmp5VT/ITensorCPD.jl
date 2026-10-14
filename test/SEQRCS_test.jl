@@ -22,7 +22,7 @@ using SparseArrays: sparse
     act_singular = S.S
     A_sk_old = omega*A
     A_sk = ITensorCPD.sketched_matricization(itensor(A', Index.(size(A'))), 1, l, rows, vals, s)
-    @test norm(A_sk_old - A_sk') ≈ 0
+    @test norm(A_sk_old - A_sk') ≤ 10^-12
     S_sk = svd(A_sk')
     sk_singular = S_sk.S
     @test all(0.5<=v<=1.5 for v in sk_singular./act_singular)
