@@ -1,12 +1,26 @@
 using LinearAlgebra, StatsBase
 using ITensors: Index
-function compute_leverage_score_probabilitiy(A, row::Index)
+function compute_leverage_score_probabilitiy(A, row::Index; use_variance=true)
   ## This only works on matrices for now.
   @assert ndims(A) == 2
-  q, _ = qr(A, row)
-  ITensors.hadamard_product!(q, q, dag(q))
-  ni = dim(q, 1)
-  return [real(sum(array(q)[i,:]))  for i in 1:ni] ./ minimum(dims(A))
+  posrow = findall(i-> i!=row, inds(A))
+  col = ind(A, posrow[1])
+  Am = array(A, (row, col))
+  q, r, p = qr(Am, ColumnNorm())
+
+  rd = diag(r).^2
+  rd = rd ./ sum(rd)
+
+  q = copy(q)
+  q = q .* conj(q)
+  ni = size(q)[1]
+  mn = minimum(dims(A))
+  
+  if use_variance
+    return [real(sum(array(q)[i,1:mn] .* rd))  for i in 1:ni] 
+  end
+
+  return [real(sum(array(q)[i,1:mn]))  for i in 1:ni]  ./ mn
 end
 
 function samples_from_probability_vector(PW::Vector, samples)
