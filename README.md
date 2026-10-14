@@ -7,8 +7,7 @@ the tensor-network algorithms developed in [ITensorNetworks.jl](https://github.c
 
 The goal of this code is to support the decomposition of distributed CPU and GPU tensors natively via the backend support of ITensors.jl.
 
-** Warning ** This project is not currently a published package with Julia and is not an official package of ITensors.jl.
-To run this project please download the repo from github using Julia package manager's `add` or `develop` functionality.
+** Warning ** This project not an official package of ITensors.jl.
 
 ```julia
 julia> using Pkg
