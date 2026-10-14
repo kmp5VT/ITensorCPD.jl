@@ -1,5 +1,4 @@
 using Test, Pkg
-Pkg.develop(path = "$(@__DIR__)/../")
 
 using ITensorCPD:
     ITensorCPD, als_optimize, KRPFreeNormal, random_CPD, row_norm, reconstruct, had_contract
